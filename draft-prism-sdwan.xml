@@ -1,0 +1,1154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rfc [
+  <!ENTITY nbsp "&#160;">
+  <!ENTITY zwsp "&#8203;">
+  <!ENTITY nbhy "&#8209;">
+  <!ENTITY wj "&#8288;">
+]>
+
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+  category="std"
+  docName="draft-prism-sdwan"
+  ipr="trust200902"
+  obsoletes=""
+  updates=""
+  submissionType="IETF"
+  xml:lang="en"
+  version="3">
+
+  <front>
+    <title abbrev="PRISM">PRISM: Protocol for Routing Intelligent Service Mapping</title>
+
+    <seriesInfo name="Internet-Draft" value="draft-prism-sdwan" />
+
+    <author fullname="John Edward Willman V" surname="Willman">
+      <organization>Department of the Air Force</organization>
+      <address>
+        <postal>
+          <street>1800 Air Force Pentagon</street>
+          <city>Washington</city>
+          <region>DC</region>
+          <code>20330</code>
+          <country>USA</country>
+        </postal>
+        <phone>+1 786 994 3023</phone>
+        <email>john.willman.1@us.af.mil</email>
+        <uri>https://www.linkedin.com/in/johnewillmanv</uri>
+      </address>
+    </author>
+    <date year="2026" month="2" day="03" />
+    <area>Operations and Management</area>
+    <workgroup>Internet Engineering Task Force</workgroup>
+
+    <keyword>SD-WAN</keyword>
+    <keyword>application identification</keyword>
+    <keyword>traffic steering</keyword>
+    <keyword>SRv6</keyword>
+    <keyword>policy</keyword>
+    <keyword>SLA</keyword>
+
+    <abstract>
+      <t>
+        This document specifies PRISM, an application-aware traffic steering
+        protocol for Software-Defined Wide Area Networks (SD-WAN). PRISM
+        provides deep application identification, per-flow tracking, Service
+        Level Agreement (SLA) enforcement, and policy-based path selection
+        integration with Segment Routing over IPv6 (SRv6).</t>
+      <t> PRISM is designed as a companion protocol to CONDUIT (Cryptographic Orchestration of
+        Network Distributed Underlay for IPsec Transport), together providing a complete
+        open-standard SD-WAN solution. CONDUIT manages the encrypted tunnel fabric while PRISM
+        provides the application intelligence and policy enforcement.</t>
+      <t>
+        The protocol is fully programmable via gRPC, supports distributed and
+        centralized deployment models, and mandates compliance with
+        Commercial National Security Algorithm Suite 2.0 (CNSA 2.0)
+        cryptographic requirements.</t>
+    </abstract>
+  </front>
+
+  <middle>
+    <section anchor="sect-1" numbered="true" toc="default">
+      <name>Introduction</name>
+      <section anchor="sect-1.1" numbered="true" toc="default">
+        <name>Problem Statement</name>
+        <t>
+          Software-Defined Wide Area Networks (SD-WAN) have emerged as a
+          critical technology for enterprises and tactical networks requiring
+          Intelligent traffic management across multiple WAN connections.
+          However, existing SD-WAN solutions are predominantly proprietary,
+          creating several challenges:</t>
+        <dl newline="false" spacing="normal" indent="3">
+          <dt>Vendor Lock-in:</dt>
+          <dd>
+            <t>
+              Organizations deploying proprietary SD-WAN solutions
+            </t>
+            <t>
+              become dependent on a single vendor for features, updates, and
+              interoperability.
+            </t>
+          </dd>
+          <dt>Limited Interoperability:</dt>
+          <dd>
+            <t>
+              Proprietary solutions cannot interoperate
+            </t>
+            <t>
+              with equipment from other vendors, limiting deployment flexibility
+              and multi-vendor environments.
+            </t>
+          </dd>
+          <dt>Opaque Operation:</dt>
+          <dd>
+            <t>
+              Closed implementations prevent security auditing
+            </t>
+            <t>
+              and verification of traffic handling behavior.
+            </t>
+          </dd>
+          <dt>Cryptographic Limitations:</dt>
+          <dd>
+            <t>
+              Many commercial SD-WAN products do not
+            </t>
+            <t>
+              support government-mandated cryptographic standards such as CNSA
+              2.0.
+            </t>
+          </dd>
+        </dl>
+        <t>
+          An open-standard SD-WAN protocol would address these limitations by
+          providing a vendor-neutral specification that enables
+          interoperability, permits security auditing, and ensures compliance
+          with required cryptographic standards.</t>
+        <t>
+          SD-WAN functionality comprises two distinct concerns:</t>
+        <ol spacing="normal" type="1">
+          <li>
+            <t>Tunnel Fabric Management: Creating, monitoring, and maintaining encrypted tunnels
+              across multiple WAN links. <xref target="I-D.conduit-tunnel-fabric"
+              /> addresses this
+              function.</t>
+          </li>
+          <li>
+            <t>Application-Aware Traffic Steering: Identifying applications,
+              tracking flows, enforcing policies, and selecting optimal paths
+              based on application requirements. This function is addressed by
+              PRISM.</t>
+          </li>
+        </ol>
+      </section>
+      <section anchor="sect-1.2" numbered="true" toc="default">
+        <name>Relationship to CONDUIT</name>
+        <t> PRISM and <xref target="I-D.conduit-tunnel-fabric"
+          /> together form a complete
+          open-standard SD-WAN solution with clear separation of responsibilities:</t>
+        <t>
+          CONDUIT Responsibilities:</t>
+        <ul spacing="normal">
+          <li>
+            <t>IPsec tunnel lifecycle management (creation, deletion, rekeying)</t>
+          </li>
+          <li>
+            <t>Tunnel health monitoring (probing, metrics collection)</t>
+          </li>
+          <li>
+            <t>Metric publishing to SRv6/IGP</t>
+          </li>
+          <li>
+            <t>IKEv2 security association management</t>
+          </li>
+        </ul>
+        <t>
+          PRISM Responsibilities:</t>
+        <ul spacing="normal">
+          <li>
+            <t>Application identification (deep packet inspection, heuristics)</t>
+          </li>
+          <li>
+            <t>Flow tracking and management</t>
+          </li>
+          <li>
+            <t>Policy definition and enforcement</t>
+          </li>
+          <li>
+            <t>SLA monitoring and alerting</t>
+          </li>
+          <li>
+            <t>Traffic class assignment for SRv6 steering</t>
+          </li>
+        </ul>
+        <t>
+          The relationship can be summarized as: PRISM decides WHAT traffic
+          class each flow belongs to; SRv6 decides WHICH path to use based on
+          Flex-Algo; CONDUIT ensures the paths EXIST and reports their quality.</t>
+      </section>
+      <section anchor="sect-1.3" numbered="true" toc="default">
+        <name>Design Goals</name>
+        <dl newline="true" spacing="normal" indent="1">
+          <dt>PRISM is designed to meet the following goals:</dt>
+          <dd />
+        </dl>
+        <figure anchor="le-1">
+          <artwork name="" type="" align="left" alt=""><![CDATA[
+ +==========================+======================================+
+ | Parameter                | Requirement                          |
+ +==========================+======================================+
+ | Flow Scale               | 10 million concurrent flows per node |
+ +--------------------------+--------------------------------------+
+ | Application Signatures   | 5000+ applications recognized        |
+ +--------------------------+--------------------------------------+
+ | Classification Latency   | Less than 100 microseconds           |
+ +--------------------------+--------------------------------------+
+ | Policy Scale             | 100,000 policies per node            |
+ +--------------------------+--------------------------------------+
+ | SLA Measurement Accuracy | Within 1ms for latency metrics       |
+ +--------------------------+--------------------------------------+
+ | API Coverage             | 100% functionality via gRPC          |
+ +--------------------------+--------------------------------------+
+ | Cryptographic Suite      | Full CNSA 2.0 compliance             |
+ +--------------------------+--------------------------------------+
+]]></artwork>
+        </figure>
+      </section>
+      <section anchor="sect-1.4" numbered="true" toc="default">
+        <name>Scope</name>
+        <t>
+          This document specifies:</t>
+        <ul spacing="normal">
+          <li>
+            <t>Application identification mechanisms and signature format</t>
+          </li>
+          <li>
+            <t>Flow tracking and management procedures</t>
+          </li>
+          <li>
+            <t>Policy framework for traffic steering</t>
+          </li>
+          <li>
+            <t>SLA definition and enforcement</t>
+          </li>
+          <li>
+            <t>Integration with SRv6 for path selection</t>
+          </li>
+          <li>
+            <t>Control protocol for distributed operation</t>
+          </li>
+          <li>
+            <t>gRPC API for management and analytics</t>
+          </li>
+        </ul>
+        <t>
+          This document does not specify:</t>
+        <ul spacing="normal">
+          <li>
+            <t>Tunnel management (covered by <xref target="I-D.conduit-tunnel-fabric"
+              />)</t>
+          </li>
+          <li>
+            <t>SRv6 data plane operations (covered by <xref target="RFC8986" />)</t>
+          </li>
+          <li>
+            <t>Specific application signatures (maintained separately)</t>
+          </li>
+          <li>
+            <t>Deep packet inspection algorithms (implementation-specific)</t>
+          </li>
+        </ul>
+      </section>
+    </section>
+    <section anchor="sect-2" numbered="true" toc="default">
+      <name>Conventions and Terminology</name>
+      <section anchor="sect-2.1" numbered="true" toc="default">
+        <name>Requirements Language</name>
+        <t> The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD
+          NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+          interpreted as described in BCP 14 <xref target="RFC2119" /> <xref
+            target="RFC8174" /> when, and only when, they appear in all capitals, as shown here.</t>
+      </section>
+      <section anchor="sect-2.2" numbered="true" toc="default">
+        <name>Definitions</name>
+        <dl newline="false" spacing="normal" indent="3">
+          <dt>Application:</dt>
+          <dd>
+            <t>
+              A network service or program identified by its traffic
+            </t>
+            <t>
+              characteristics, such as Microsoft Teams, Salesforce, or SSH.
+            </t>
+          </dd>
+          <dt>Application Category:</dt>
+          <dd>
+            <t>
+              A grouping of applications with similar
+            </t>
+            <t>
+              characteristics or business purposes, such as "unified communications" or "business
+              critical".
+            </t>
+          </dd>
+          <dt>Application Signature:</dt>
+          <dd>
+            <t>
+              A set of patterns or heuristics used to
+            </t>
+            <t>
+              Identify a specific application from its network traffic.
+            </t>
+          </dd>
+          <dt>Flow:</dt>
+          <dd>
+            <t>
+              A unidirectional sequence of packets sharing common
+            </t>
+            <t>
+              identifying characteristics, typically a 5-tuple of protocol,
+              source address, source port, destination address, and destination
+              port.
+            </t>
+          </dd>
+          <dt>Session:</dt>
+          <dd>
+            <t>
+              A bidirectional communication comprising two related flows
+            </t>
+            <t>
+              (forward and reverse directions).
+            </t>
+          </dd>
+          <dt>Traffic Class:</dt>
+          <dd>
+            <t>
+              A classification assigned to flows that maps to
+            </t>
+            <t>
+              specific SRv6 treatment, including path selection and QoS.
+            </t>
+          </dd>
+          <dt>SLA (Service Level Agreement):</dt>
+          <dd>
+            <t>
+              A set of performance thresholds that
+            </t>
+            <t>
+              define acceptable service quality for an application or traffic
+              class.
+            </t>
+          </dd>
+          <dt>Policy:</dt>
+          <dd>
+            <t>
+              A rule that matches traffic based on specified conditions
+            </t>
+            <t>
+              and applies designated actions.
+            </t>
+          </dd>
+          <dt>DPI (Deep Packet Inspection):</dt>
+          <dd>
+            <t>
+              Analysis of packet contents beyond
+            </t>
+            <t>
+              layer 4 headers to identify applications.
+            </t>
+          </dd>
+          <dt>PRISM Node:</dt>
+          <dd>
+            <t>
+              A device implementing the PRISM protocol, typically co-
+            </t>
+            <t>
+              located with a CONDUIT node.
+            </t>
+          </dd>
+          <dt>PRISM Controller:</dt>
+          <dd>
+            <t>
+              A centralized management entity that distributes
+            </t>
+            <t>
+              policies and aggregates analytics from PRISM nodes.
+            </t>
+          </dd>
+        </dl>
+      </section>
+    </section>
+    <section anchor="sect-3" numbered="true" toc="default">
+      <name>Architecture</name>
+      <section anchor="sect-3.1" numbered="true" toc="default">
+        <name>System Overview</name>
+        <t>
+          A PRISM deployment consists of the following components:</t>
+        <dl newline="false" spacing="normal" indent="3">
+          <dt>PRISM Controller:</dt>
+          <dd>
+            <t>
+              A centralized or distributed management entity
+            </t>
+            <t>
+              responsible for policy management and distribution, application
+              signature database maintenance, aggregated analytics, and
+              reporting, and SLA monitoring dashboard.
+            </t>
+          </dd>
+          <dt>PRISM Node:</dt>
+          <dd>
+            <t>
+              A data plane element deployed at network edges
+            </t>
+            <t>
+              responsible for application identification, flow tracking, and
+              classification, policy enforcement, per-flow metrics collection,
+              and SRv6 traffic class assignment.
+            </t>
+          </dd>
+          <dt>CONDUIT Node:</dt>
+          <dd>
+            <t>
+              Co-located tunnel fabric manager providing IPsec
+            </t>
+            <t>
+              tunnel management and path quality metrics (feeds into SLA
+              calculations).
+            </t>
+          </dd>
+          <dt>SRv6 Data Plane:</dt>
+          <dd>
+            <t>
+              Forwarding plane that executes traffic engineering
+            </t>
+            <t>
+              decisions based on traffic class assignments from PRISM.
+            </t>
+          </dd>
+        </dl>
+      </section>
+      <section anchor="sect-3.2" numbered="true" toc="default">
+        <name>Deployment Models</name>
+        <t>
+          PRISM supports multiple deployment models:</t>
+        <dl newline="false" spacing="normal" indent="3">
+          <dt>Distributed Mode:</dt>
+          <dd>
+            <t>
+              Each PRISM node operates independently. Policies
+            </t>
+            <t>
+              are configured locally on each node. No central controller required.
+              Suitable for small deployments or disconnected operations.
+            </t>
+          </dd>
+          <dt>Centralized Mode:</dt>
+          <dd>
+            <t>
+              PRISM Controller manages all nodes. Policies
+            </t>
+            <t>
+              are defined centrally and distributed to nodes. Centralized analytics
+              and reporting. Suitable for enterprise deployments.
+            </t>
+          </dd>
+          <dt>Hierarchical Mode:</dt>
+          <dd>
+            <t>
+              Regional controllers manage local nodes. Global
+            </t>
+            <t>
+              controller coordinates regional controllers. Policies can be
+              global, regional, or local. Suitable for large distributed
+              deployments.
+            </t>
+          </dd>
+          <dt>Hybrid Mode:</dt>
+          <dd>
+            <t>
+              Central controller for policy distribution. Local
+            </t>
+            <t>
+              autonomy for real-time decisions. Nodes operate independently if
+              the controller is unreachable. Suitable for tactical/resilient
+              deployments.
+            </t>
+          </dd>
+        </dl>
+      </section>
+    </section>
+    <section anchor="sect-4" numbered="true" toc="default">
+      <name>Application Identification</name>
+      <section anchor="sect-4.1" numbered="true" toc="default">
+        <name>Identification Methods</name>
+        <dl newline="true" spacing="normal" indent="1">
+          <dt>PRISM employs multiple methods to identify applications:</dt>
+          <dd />
+        </dl>
+        <figure anchor="le-2">
+          <artwork name="" type="" align="left" alt=""><![CDATA[
+   +=======================+=======+=============================+
+   | Method                | Layer | Description                 |
+   +=======================+=======+=============================+
+   | Port-based            | L4    | Well-known ports (SSH=22)   |
+   +-----------------------+-------+-----------------------------+
+   | Protocol Signature    | L7    | Pattern matching in payload |
+   +-----------------------+-------+-----------------------------+
+   | TLS/SNI Analysis      | L7    | Server Name Indication      |
+   +-----------------------+-------+-----------------------------+
+   | DNS Correlation       | L7    | Map DNS queries to flows    |
+   +-----------------------+-------+-----------------------------+
+   | Certificate Analysis  | L7    | X.509 certificate fields    |
+   +-----------------------+-------+-----------------------------+
+   | Behavioral Heuristics | L3-L7 | Traffic patterns/timing     |
+   +-----------------------+-------+-----------------------------+
+   | Machine Learning      | L3-L7 | Trained classifiers         |
+   +-----------------------+-------+-----------------------------+
+   | IP Reputation         | L3    | Known service IP ranges     |
+   +-----------------------+-------+-----------------------------+
+]]></artwork>
+        </figure>
+        <t>
+          Classification proceeds through methods in order of reliability until
+          a confident identification is achieved.</t>
+      </section>
+      <section anchor="sect-4.2" numbered="true" toc="default">
+        <name>Encrypted Traffic Analysis</name>
+        <t>
+          For encrypted traffic (TLS/DTLS), PRISM uses metadata analysis
+          without decryption:</t>
+        <dl newline="false" spacing="normal" indent="3">
+          <dt>TLS Server Name Indication (SNI):</dt>
+          <dd>
+            <t>
+              The SNI field in the TLS
+            </t>
+            <t>
+              The client Hello message reveals the intended server hostname. This is
+              the primary method for HTTPS classification.
+            </t>
+          </dd>
+          <dt>TLS Certificate Analysis:</dt>
+          <dd>
+            <t>
+              Server certificates contain identifying
+            </t>
+            <t>
+              information, including Common Name, Subject Alternative Names,
+              Organization, and Issuer.
+            </t>
+          </dd>
+          <dt>JA3/JA3S Fingerprinting:</dt>
+          <dd>
+            <t>
+              TLS handshake characteristics create a unique
+            </t>
+            <t>
+              fingerprints for client and server implementations.
+            </t>
+          </dd>
+          <dt>Encrypted Traffic Behavioral Analysis:</dt>
+          <dd>
+            <t>
+              Statistical analysis of
+            </t>
+            <t>
+              packet sizes, timing, and directionality can identify applications
+              without payload inspection.
+            </t>
+          </dd>
+        </dl>
+        <t>
+          IMPORTANT: PRISM does not perform TLS interception or decryption.
+          All encrypted traffic analysis is performed on metadata and
+          observable traffic characteristics.</t>
+      </section>
+      <section anchor="sect-4.3" numbered="true" toc="default">
+        <name>Application Categories</name>
+        <dl newline="true" spacing="normal" indent="1">
+          <dt>Applications are organized into categories for policy management:</dt>
+          <dd />
+        </dl>
+        <figure anchor="le-3">
+          <artwork name="" type="" align="left" alt=""><![CDATA[
+       +========================+============================+
+       | Category               | Description                |
+       +========================+============================+
+       | unified-communications | Voice, video, messaging    |
+       |                        | (Teams, Zoom, Webex)       |
+       +------------------------+----------------------------+
+       | business-critical      | Core business applications |
+       |                        | (ERP, CRM, custom apps)    |
+       +------------------------+----------------------------+
+       | cloud-services         | SaaS applications (O365,   |
+       |                        | Salesforce, Workday)       |
+       +------------------------+----------------------------+
+       | infrastructure         | Network services (DNS,     |
+       |                        | NTP, SNMP)                 |
+       +------------------------+----------------------------+
+       | security               | Security tools (AV         |
+       |                        | updates, SIEM)             |
+       +------------------------+----------------------------+
+       | file-transfer          | File sharing (SharePoint,  |
+       |                        | Box, FTP)                  |
+       +------------------------+----------------------------+
+       | web-browsing           | General web traffic        |
+       +------------------------+----------------------------+
+       | streaming-media        | Video/audio streaming      |
+       |                        | (YouTube, Spotify)         |
+       +------------------------+----------------------------+
+       | remote-access          | VPN, RDP, SSH              |
+       +------------------------+----------------------------+
+       | unknown                | Unclassified traffic       |
+       +------------------------+----------------------------+
+]]></artwork>
+        </figure>
+      </section>
+    </section>
+    <section anchor="sect-5" numbered="true" toc="default">
+      <name>Flow Management</name>
+      <section anchor="sect-5.1" numbered="true" toc="default">
+        <name>Flow Identification</name>
+        <t>
+          A composite key identifies flows:</t>
+        <t>
+          Standard 5-Tuple:</t>
+        <ul spacing="normal">
+          <li>
+            <t>IP Protocol (8 bits)</t>
+          </li>
+          <li>
+            <t>Source IP Address (128 bits for IPv6)</t>
+          </li>
+          <li>
+            <t>Destination IP Address (128 bits for IPv6)</t>
+          </li>
+          <li>
+            <t>Source Port (16 bits)</t>
+          </li>
+          <li>
+            <t>Destination Port (16 bits)</t>
+          </li>
+        </ul>
+        <t>
+          Extended Identifiers (optional):</t>
+        <ul spacing="normal">
+          <li>
+            <t>VLAN ID</t>
+          </li>
+          <li>
+            <t>VRF/VPN ID</t>
+          </li>
+          <li>
+            <t>Ingress interface</t>
+          </li>
+        </ul>
+      </section>
+      <section anchor="sect-5.2" numbered="true" toc="default">
+        <name>Flow Lifecycle</name>
+        <t>
+          Flows progress through the following states:</t>
+        <dl newline="false" spacing="normal" indent="3">
+          <dt>NEW:</dt>
+          <dd>
+            <t>
+              First packet observed. Application identification in progress.
+            </t>
+            <t>
+              Default traffic class applied.
+            </t>
+          </dd>
+          <dt>CLASSIFYING:</dt>
+          <dd>
+            <t>
+              Multiple packets observed. Application identification
+            </t>
+            <t>
+              in progress. May transition to ESTABLISHED once classification
+              confidence exceeds threshold.
+            </t>
+          </dd>
+          <dt>ESTABLISHED:</dt>
+          <dd>
+            <t>
+              Application identified with sufficient confidence.
+            </t>
+            <t>
+              Traffic class assigned based on policy. SLA monitoring is active.
+            </t>
+          </dd>
+          <dt>CLOSING:</dt>
+          <dd>
+            <t>
+              Connection termination detected. Preparing to collect
+            </t>
+            <t>
+              final statistics.
+            </t>
+          </dd>
+          <dt>CLOSED:</dt>
+          <dd>
+            <t>
+              Flow terminated. Final statistics recorded. Entry
+            </t>
+            <t>
+              scheduled for removal after reporting.
+            </t>
+          </dd>
+        </dl>
+      </section>
+    </section>
+    <section anchor="sect-6" numbered="true" toc="default">
+      <name>Policy Framework</name>
+      <section anchor="sect-6.1" numbered="true" toc="default">
+        <name>Policy Model</name>
+        <t>
+          PRISM policies follow a match-action model with the following
+          structure:</t>
+        <ul spacing="normal">
+          <li>
+            <t>Policy ID: Unique identifier</t>
+          </li>
+          <li>
+            <t>Name: Human-readable name</t>
+          </li>
+          <li>
+            <t>Priority: Evaluation order (lower = higher priority)</t>
+          </li>
+          <li>
+            <t>Match: Conditions that select applicable traffic</t>
+          </li>
+          <li>
+            <t>Action: Operations to perform on matching traffic</t>
+          </li>
+          <li>
+            <t>Schedule: Optional time-based activation</t>
+          </li>
+        </ul>
+      </section>
+      <section anchor="sect-6.2" numbered="true" toc="default">
+        <name>Match Conditions</name>
+        <t>
+          Policies can match on:</t>
+        <ul spacing="normal">
+          <li>
+            <t>Source/destination IP address or prefix</t>
+          </li>
+          <li>
+            <t>Port or port range</t>
+          </li>
+          <li>
+            <t>Specific application ID or category</t>
+          </li>
+          <li>
+            <t>Application risk level</t>
+          </li>
+          <li>
+            <t>Protocol (TCP, UDP, etc.)</t>
+          </li>
+          <li>
+            <t>DSCP value</t>
+          </li>
+          <li>
+            <t>Time of day</t>
+          </li>
+          <li>
+            <t>Ingress interface or zone</t>
+          </li>
+        </ul>
+      </section>
+      <section anchor="sect-6.3" numbered="true" toc="default">
+        <name>Actions</name>
+        <t>
+          When a policy matches, the following actions may be applied:</t>
+        <dl newline="false" spacing="normal" indent="3">
+          <dt>Traffic Class Assignment:</dt>
+          <dd>
+            <t>
+              Set traffic class (maps to SRv6 color),
+            </t>
+            <t>
+              set DSCP value
+            </t>
+          </dd>
+          <dt>Path Selection:</dt>
+          <dd>
+            <t>
+              Prefer specific path characteristics, avoid specific
+            </t>
+            <t>
+              paths, pin to a specific path
+            </t>
+          </dd>
+          <dt>SLA Assignment:</dt>
+          <dd>
+            <t>
+              Apply SLA profile, set violation actions
+            </t>
+            <t>
+              Bandwidth Management: Rate limit, bandwidth guarantee
+            </t>
+          </dd>
+          <dt>Security:</dt>
+          <dd>
+            <t>
+              Permit, deny, redirect to inspection
+            </t>
+            <t />
+          </dd>
+        </dl>
+      </section>
+      <section anchor="sect-6.4" numbered="true" toc="default">
+        <name>SLA Definitions</name>
+        <dl newline="true" spacing="normal" indent="1">
+          <dt>Standard SLA Profiles:</dt>
+          <dd />
+        </dl>
+        <figure anchor="le-4">
+          <artwork name="" type="" align="left" alt=""><![CDATA[
+  +================+=========+========+======+====================+
+  | Profile        | Latency | Jitter | Loss | Use Case           |
+  +================+=========+========+======+====================+
+  | realtime-voice | 150ms   | 30ms   | 1%   | VoIP               |
+  +----------------+---------+--------+------+--------------------+
+  | realtime-video | 200ms   | 50ms   | 1%   | Video conferencing |
+  +----------------+---------+--------+------+--------------------+
+  | interactive    | 300ms   | 100ms  | 2%   | Virtual desktop    |
+  +----------------+---------+--------+------+--------------------+
+  | transactional  | 500ms   | N/A    | 0.1% | Database, API      |
+  +----------------+---------+--------+------+--------------------+
+  | best-effort    | N/A     | N/A    | N/A  | General browsing   |
+  +----------------+---------+--------+------+--------------------+
+]]></artwork>
+        </figure>
+      </section>
+    </section>
+    <section anchor="sect-7" numbered="true" toc="default">
+      <name>SRv6 Integration</name>
+      <section anchor="sect-7.1" numbered="true" toc="default">
+        <name>Traffic Class to SRv6 Color Mapping</name>
+        <dl newline="true" spacing="normal" indent="1">
+          <dt>PRISM assigns traffic classes that map to SRv6 policy colors:</dt>
+          <dd />
+        </dl>
+        <figure anchor="le-5">
+          <artwork name="" type="" align="left" alt=""><![CDATA[
+    +===============+=======+===========+=======================+
+    | Traffic Class | Color | Flex-Algo | Description           |
+    +===============+=======+===========+=======================+
+    | realtime      | 100   | 128       | Voice, real-time C2   |
+    +---------------+-------+-----------+-----------------------+
+    | video         | 200   | 129       | Video conferencing    |
+    +---------------+-------+-----------+-----------------------+
+    | interactive   | 300   | 128       | VDI, interactive apps |
+    +---------------+-------+-----------+-----------------------+
+    | business      | 400   | default   | Business applications |
+    +---------------+-------+-----------+-----------------------+
+    | best-effort   | 0     | default   | Default treatment     |
+    +---------------+-------+-----------+-----------------------+
+]]></artwork>
+        </figure>
+      </section>
+      <section anchor="sect-7.2" numbered="true" toc="default">
+        <name>Dynamic Path Selection</name>
+        <t>
+          PRISM influences path selection through traffic class assignment, not
+          direct path manipulation. The sequence is:</t>
+        <ol spacing="normal" type="1">
+          <li>
+            <t>PRISM classifies flow and assigns traffic class</t>
+          </li>
+          <li>
+            <t>Traffic class maps to SRv6 color</t>
+          </li>
+          <li>
+            <t>SRv6 color maps to SR policy</t>
+          </li>
+          <li>
+            <t>SR policy specifies Flex-Algo or explicit path</t>
+          </li>
+          <li>
+            <t>SRv6 data plane forwards accordingly</t>
+          </li>
+        </ol>
+        <t>
+          This maintains clean separation: PRISM determines the application
+          requirements, SRv6 satisfies them.</t>
+      </section>
+    </section>
+    <section anchor="sect-8" numbered="true" toc="default">
+      <name>SLA Monitoring and Enforcement</name>
+      <section anchor="sect-8.1" numbered="true" toc="default">
+        <name>SLA Metrics</name>
+        <t>
+          PRISM monitors:</t>
+        <t>
+          Latency: End-to-end delay. Measured via TCP timestamps or probes.</t>
+        <t> Jitter: Variation in packet delay. Calculated per <xref target="RFC3550"
+          />.</t>
+        <dl newline="false" spacing="normal" indent="3">
+          <dt>Packet Loss:</dt>
+          <dd>
+            <t>
+              Percentage not delivered. Inferred from TCP
+            </t>
+            <t>
+              retransmissions.
+            </t>
+          </dd>
+          <dt>Throughput:</dt>
+          <dd>
+            <t>
+              Bytes per second over measurement interval.
+            </t>
+            <t />
+          </dd>
+        </dl>
+      </section>
+      <section anchor="sect-8.2" numbered="true" toc="default">
+        <name>Remediation Actions</name>
+        <t>
+          When SLA violations are detected:</t>
+        <dl newline="false" spacing="normal" indent="1">
+          <dt>Alert Only:</dt>
+          <dd>
+            <t>
+              Generate alert, no corrective action.
+            </t>
+            <t />
+          </dd>
+          <dt>Reclassify:</dt>
+          <dd>
+            <t>
+              Move the flow to a different traffic class.
+            </t>
+            <t />
+          </dd>
+          <dt>Path Switch:</dt>
+          <dd>
+            <t>
+              Signal SRv6 to prefer the alternate path.
+            </t>
+            <t />
+          </dd>
+        </dl>
+        <t>
+          Escalate: Notify the external system to take action.</t>
+      </section>
+    </section>
+    <section anchor="sect-9" numbered="true" toc="default">
+      <name>Control Protocol</name>
+      <section anchor="sect-9.1" numbered="true" toc="default">
+        <name>Transport</name>
+        <t>
+          PRISM control messages are transported via UDP on port 4796.</t>
+        <t>
+          All control messages are authenticated using HMAC-SHA-384.</t>
+      </section>
+      <section anchor="sect-9.2" numbered="true" toc="default">
+        <name>Message Header</name>
+        <artwork name="" type="" align="left" alt=""><![CDATA[
+0                   1                   2                   3
+0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|    Version    |     Type      |            Flags              |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|            Length             |           Reserved            |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                                                               |
++                         Node ID (64 bits)                     +
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                      Sequence Number                          |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                                                               |
++                      Timestamp (64 bits)                      +
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                                                               |
++                                                               +
+|                      HMAC-SHA-384 (384 bits)                  |
++                                                               +
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+Total header size: 72 octets (consistent with CONDUIT)
+]]></artwork>
+      </section>
+      <section anchor="sect-9.3" numbered="true" toc="default">
+        <name>Message Types</name>
+        <!--
+   draft-prism-sdwan-00.txt(802): Warning: Unexpected title: expected 'Figure ...',
+   found 'Table 6'.  This looks like a figure that has been entered as a
+   texttable.  The generated XML will need adjustment.
+   -->
+        <figure anchor="le-6">
+          <artwork name="" type="" align="left" alt=""><![CDATA[
+ +=======+===============+========================================+
+ | Value | Name          | Description                            |
+ +=======+===============+========================================+
+ | 0x01  | HELLO         | Node discovery and capability exchange |
+ +-------+---------------+----------------------------------------+
+ | 0x02  | HELLO_ACK     | Response to HELLO                      |
+ +-------+---------------+----------------------------------------+
+ | 0x10  | POLICY_PUSH   | Policy distribution from controller    |
+ +-------+---------------+----------------------------------------+
+ | 0x11  | POLICY_ACK    | Policy receipt acknowledgment          |
+ +-------+---------------+----------------------------------------+
+ | 0x20  | FLOW_REPORT   | Flow statistics report                 |
+ +-------+---------------+----------------------------------------+
+ | 0x21  | FLOW_SYNC     | Flow state synchronization (HA)        |
+ +-------+---------------+----------------------------------------+
+ | 0x30  | SLA_ALERT     | SLA violation notification             |
+ +-------+---------------+----------------------------------------+
+ | 0x31  | SLA_CLEAR     | SLA violation cleared                  |
+ +-------+---------------+----------------------------------------+
+ | 0x40  | APP_SIGNATURE | Application signature update           |
+ +-------+---------------+----------------------------------------+
+ | 0x0F  | ERROR         | Error notification                     |
+ +-------+---------------+----------------------------------------+
+]]></artwork>
+        </figure>
+      </section>
+    </section>
+    <section anchor="sect-10" numbered="true" toc="default">
+      <name>gRPC API</name>
+      <t>
+        PRISM exposes functionality through five gRPC services:</t>
+      <dl newline="false" spacing="normal" indent="3">
+        <dt>PolicyService:</dt>
+        <dd>
+          <t>
+            Policy lifecycle management (CRUD for policies, SLA
+          </t>
+          <t>
+            profiles)
+          </t>
+        </dd>
+        <dt>ApplicationService:</dt>
+        <dd>
+          <t>
+            Application signature management
+          </t>
+          <t />
+        </dd>
+        <dt>FlowService:</dt>
+        <dd>
+          <t>
+            Flow visibility and real-time streaming
+          </t>
+          <t />
+        </dd>
+        <dt>AnalyticsService:</dt>
+        <dd>
+          <t>
+            SLA compliance reports and traffic analytics
+          </t>
+          <t />
+        </dd>
+        <dt>ConfigService:</dt>
+        <dd>
+          <t>
+            Node configuration
+          </t>
+          <t />
+        </dd>
+      </dl>
+      <t>
+        All gRPC connections MUST use mutual TLS (mTLS) with CNSA 2.0
+        compliant certificates.</t>
+    </section>
+    <section anchor="sect-11" numbered="true" toc="default">
+      <name>Cryptographic Requirements</name>
+      <t>
+        PRISM implementations MUST comply with CNSA 2.0:</t>
+      <ul spacing="normal">
+        <li>
+          <t>AES-256-GCM for symmetric encryption</t>
+        </li>
+        <li>
+          <t>ECDH P-384 for key exchange</t>
+        </li>
+        <li>
+          <t>ECDSA P-384 for digital signatures</t>
+        </li>
+        <li>
+          <t>SHA-384 for hashing</t>
+        </li>
+        <li>
+          <t>HMAC-SHA-384 for message authentication</t>
+        </li>
+      </ul>
+      <t>
+        The gRPC API MUST use TLS 1.3 with the TLS_AES_256_GCM_SHA384 cipher suite.</t>
+    </section>
+    <section anchor="sect-12" numbered="true" toc="default">
+      <name>Security Considerations</name>
+      <section anchor="sect-12.1" numbered="true" toc="default">
+        <name>Privacy Considerations</name>
+        <t>
+          PRISM performs deep packet inspection, which raises privacy concerns.
+          PRISM analyzes metadata of encrypted traffic but does not decrypt
+          contents. Organizations SHOULD define data retention policies.</t>
+      </section>
+      <section anchor="sect-12.2" numbered="true" toc="default">
+        <name>Application Identification Risks</name>
+        <t>
+          Sophisticated actors may attempt to evade identification.
+          Implementations SHOULD employ multiple identification methods and
+          provide mechanisms to review classifications.</t>
+      </section>
+      <section anchor="sect-12.3" numbered="true" toc="default">
+        <name>Policy Security</name>
+        <t>
+          Policies MUST be authenticated using HMAC-SHA-384. Policy changes
+          SHOULD require appropriate authorization and be logged for audit.</t>
+      </section>
+    </section>
+    <section anchor="sect-13" numbered="true" toc="default">
+      <name>IANA Considerations</name>
+      <section anchor="sect-13.1" numbered="true" toc="default">
+        <name>UDP Port Allocation</name>
+        <t>
+          This document requests the allocation of UDP port 4796 for PRISM control
+          messages.</t>
+      </section>
+      <section anchor="sect-13.2" numbered="true" toc="default">
+        <name>Application Category Registry</name>
+        <t>
+          This document requests the creation of a "PRISM Application Categories."
+          registry with initial values from 0x01 (unified-communications)
+          through 0xFF (unknown).</t>
+      </section>
+    </section>
+  </middle>
+
+  <back>
+    <references>
+      <name>References</name>
+      <references>
+        <name>Normative References</name>
+        <xi:include
+          href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3550.xml" />
+        <xi:include
+          href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml" />
+        <xi:include
+          href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8986.xml" />
+        <xi:include
+          href="https://datatracker.ietf.org/doc/bibxml3/draft-conduit-tunnel-fabric-00.xml" />
+      </references>
+      <references>
+        <name>Informative References</name>
+        <xi:include
+          href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml" />
+      </references>
+      <stream>IETF</stream>
+    </references>
+    <section numbered="false">
+      <name>Acknowledgements</name>
+
+      <t>The authors thank the networking community for discussions on
+        SD-WAN requirements and open standards approaches.</t>
+    </section>
+  </back>
+</rfc>
