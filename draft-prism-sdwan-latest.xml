@@ -1142,7 +1142,6 @@ Total header size: 72 octets (consistent with CONDUIT)
         <xi:include
           href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml" />
       </references>
-      <stream>IETF</stream>
     </references>
     <section numbered="false">
       <name>Acknowledgements</name>
