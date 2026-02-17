@@ -14,13 +14,16 @@ on:
     - LICENSE.md
     - .gitignore
 
+permissions:
+  contents: write
+  pull-requests: write
+  pages: write
+  id-token: write
+
 jobs:
   build:
     name: "Update Editor's Copy"
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
     steps:
     - name: "Checkout"
       uses: actions/checkout@v5
@@ -78,3 +81,24 @@ jobs:
         path: |
           draft-*.html
           draft-*.txt
+
+    - name: "Upload Pages Artifact"
+      if: ${{ github.event_name == 'push' }}
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: |
+          draft-*.html
+          draft-*.txt
+
+  deploy:
+    name: "Deploy to GitHub Pages"
+    if: ${{ github.event_name == 'push' }}
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+    - name: "Deploy to GitHub Pages"
+      id: deployment
+      uses: actions/deploy-pages@v4
