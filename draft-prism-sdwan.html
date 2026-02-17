@@ -1,0 +1,2624 @@
+<!DOCTYPE html>
+<html lang="en" class="Internet-Draft">
+<head>
+<meta charset="utf-8">
+<meta content="Common,Latin" name="scripts">
+<meta content="initial-scale=1.0" name="viewport">
+<title>PRISM: Protocol for Routing Intelligent Service Mapping</title>
+<meta content="John Edward Willman V" name="author">
+<meta content="
+       
+        This document specifies PRISM, an application-aware traffic steering
+        protocol for Software-Defined Wide Area Networks (SD-WAN). PRISM
+        provides deep application identification, per-flow tracking, Service
+        Level Agreement (SLA) enforcement, and policy-based path selection
+        integration with Segment Routing over IPv6 (SRv6). 
+        PRISM is designed as a companion protocol to CONDUIT (Cryptographic Orchestration of
+        Network Distributed Underlay for IPsec Transport), together providing a complete
+        open-standard SD-WAN solution. CONDUIT manages the encrypted tunnel fabric while PRISM
+        provides the application intelligence and policy enforcement. 
+       
+        The protocol is fully programmable via gRPC, supports distributed and
+        centralized deployment models, and mandates compliance with
+        Commercial National Security Algorithm Suite 2.0 (CNSA 2.0)
+        cryptographic requirements. 
+    " name="description">
+<meta content="xml2rfc 3.31.0" name="generator">
+<meta content="SD-WAN" name="keyword">
+<meta content="application identification" name="keyword">
+<meta content="traffic steering" name="keyword">
+<meta content="SRv6" name="keyword">
+<meta content="policy" name="keyword">
+<meta content="SLA" name="keyword">
+<meta content="draft-prism-sdwan-latest" name="ietf.draft">
+<!-- Generator version information:
+  xml2rfc 3.31.0
+    Python 3.12.12
+    ConfigArgParse 1.7
+    google-i18n-address 3.1.1
+    intervaltree 3.2.1
+    Jinja2 3.1.6
+    lxml 6.0.2
+    platformdirs 4.5.1
+    pycountry 24.6.1
+    PyYAML 6.0.3
+    requests 2.32.5
+    wcwidth 0.3.0
+-->
+<link href="draft-prism-sdwan.xml" rel="alternate" type="application/rfc+xml">
+<link href="#copyright" rel="license">
+<style type="text/css">@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-vietnamese.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-cyrillic.woff2') format('woff2');
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-vietnamese.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-cyrillic.woff2') format('woff2');
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-vietnamese.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: local('Lora SemiBold'), local('Lora-SemiBold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-semibold-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Oxygen Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Oxygen Mono'), local('OxygenMono-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/oxygenmono-regular-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Oxygen Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Oxygen Mono'), local('OxygenMono-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/oxygenmono-regular-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+}
+
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-greek.woff2') format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-greek.woff2') format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  color-scheme: light dark;
+  --background-color: #fff;
+  --text-color: #222;
+  --title-color: #191919;
+  --link-color: #2a6496;
+  --highlight-color: #f9f9f9;
+  --line-color: #eee;
+  --pilcrow-weak: #ddd;
+  --pilcrow-strong: #bbb;
+  --small-font-size: 14.5px;
+  --font-mono: 'Oxygen Mono', monospace;
+  --font-title: "Sofia Sans Semi Condensed", sans-serif;
+  scrollbar-color: #bbb #eee;
+}
+body {
+  max-width: 600px;
+  margin: 75px auto;
+  padding: 0 5px;
+  color: var(--text-color);
+  background-color: var(--background-color);
+  font: 16px/22px "Lora", serif;
+  scroll-behavior: smooth;
+}
+
+.ears {
+  display: none;
+}
+
+/* headings */
+section {
+  clear: both;
+}
+.section-number {
+  padding-right: 0.5em;
+}
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-title);
+  font-weight: 680;
+  margin: 0.8em 0 0.3em;
+  font-size-adjust: 0.5;
+  color: var(--title-color);
+}
+h1#title {
+  font-size: 32px;
+  line-height: 40px;
+  clear: both;
+}
+h1#title, h1#rfcnum {
+  margin: 1.5em 0 0.2em;
+}
+h1#rfcnum + h1#title {
+  margin: 0.2em 0;
+}
+
+h1, h2, h3 {
+  font-size: 22px;
+  line-height: 27px;
+}
+h4, h5, h6 {
+  font-size: 20px;
+  line-height: 24px;
+}
+
+/* general structure */
+.author {
+  padding-bottom: 0.3em;
+  vertical-align: top;
+}
+#abstract+p {
+  font-size: 18px;
+  line-height: 24px;
+}
+#abstract+p code, #abstract+p samp, #abstract+p tt {
+  font-size: 16px;
+  line-height: 0;
+}
+
+p {
+  padding: 0;
+  margin: 0.5em 0;
+  text-align: left;
+}
+div {
+  margin: 0;
+}
+.alignRight.art-text {
+  background-color: var(--highlight-color);
+  border: 1px solid var(--line-color);
+  border-radius: 3px;
+  padding: 0.5em 1em 0;
+  margin-bottom: 0.5em;
+}
+.alignRight.art-text pre {
+  padding: 0;
+  width: auto;
+}
+.alignRight {
+  margin: 1em 0;
+}
+.alignRight > *:first-child {
+  border: none;
+  margin: 0;
+  float: right;
+  clear: both;
+}
+.alignRight > *:nth-child(2) {
+  clear: both;
+  display: block;
+  border: none;
+}
+svg {
+  display: block;
+}
+/* font-family isn't space-separated, but =~ will have to do */
+svg[font-family~="monospace" i], svg [font-family~="monospace" i] {
+  font-family: var(--font-mono);
+}
+.alignCenter.art-text {
+  background-color: var(--highlight-color);
+  border: 1px solid var(--line-color);
+  border-radius: 3px;
+  padding: 0.5em 1em 0;
+  margin-bottom: 0.5em;
+}
+.alignCenter.art-text pre {
+  padding: 0;
+  width: auto;
+}
+.alignCenter {
+  margin: 1em 0;
+}
+.alignCenter > *:first-child {
+  border: none;
+  /* this isn't optimal, but it's an existence proof.  PrinceXML doesn't
+     support flexbox yet.
+  */
+  display: table;
+  margin: 0 auto;
+}
+
+/* lists */
+ol, ul {
+  padding: 0;
+  margin: 0 0 0.5em 2em;
+  & :is(ol, ul) {
+    margin-left: 1em;
+  }
+}
+li {
+  margin: 0 0 0.25em 0;
+}
+ul.empty, .ulEmpty {
+  list-style-type: none;
+  & li {
+    margin-top: 0.5em;
+  }
+}
+:is(ul, ol).compact, .ulCompact, .olCompact {
+  margin: 0 0 0 2em;
+  & li {
+    margin: 0;
+    & :first-child { margin-top: 0; }
+    & :last-child { margin-bottom: 0; }
+  }
+}
+
+/* definition lists */
+dl {
+  clear: left;
+  --indent: 3ch;
+  /* --indent: attr(indent ch); not supported in any browser, but we can dream */
+  &.olPercent {
+    --indent: 5ch;
+    & > dt {
+      min-width: calc(var(--indent) - 2ch);
+    }
+  }
+  &.olPercent > dt {
+    float: none;
+  }
+
+  dl > dd > & {
+    margin-top: 0.5em;
+    margin-bottom: 0;
+  }
+}
+dl:not(.dlNewline) > dt {
+  float: left;
+  margin-right: 2ch;
+  min-width: 8ch;
+}
+dl > dd {
+  margin-bottom: .8em;
+  margin-left: var(--indent) !important; /* stupid element overrides */
+  min-height: 2ex;
+}
+:is(dl.compact, .dlCompact) > dd {
+  margin-bottom: 0;
+  & > :is(:first-child, .break:first-child + *) {
+    margin-top: 0;
+  }
+  & > :is(:last-child) {
+    margin-bottom: 0;
+  }
+}
+:is(dd, span).break {
+  display: none;
+}
+
+/* links */
+a, a[href].selfRef:hover {
+  text-decoration: none;
+}
+a[href] {
+  color: var(--link-color);
+}
+a[href].selfRef, .iref + a[href].internal {
+  color: var(--text-color);
+}
+a[href]:hover {
+  text-decoration: underline;
+}
+a[href].selfRef:hover {
+  background-color: var(--highlight-color);
+}
+a.xref:is(.cite, .auto), :is(#status-of-memo, #copyright) a {
+  white-space: nowrap;
+}
+
+/* Figures */
+tt, code, pre {
+  background-color: var(--highlight-color);
+  font: 14px/22px var(--font-mono);
+}
+tt, code {
+  /* changing the font for inline elements leads to different ascender
+     and descender heights; as we want to retain baseline alignment,
+     remove leading to avoid altering the final height of lines
+     note: this fails if these blocks take an entire line,
+     a different solution would be great */
+  line-height: 0;
+}
+:is(h1, h2, h3, h4, h5, h6) :is(tt, code) {
+  font-size: 84%;
+}
+pre {
+  border: 1px solid var(--line-color);
+  font-size: 13.5px;
+  line-height: 16px;
+  letter-spacing: -0.2px;
+  margin: 5px;
+  padding: 5px;
+}
+img {
+  max-width: 100%;
+}
+figure {
+  margin: 0.5em 0;
+  padding: 0;
+}
+figure blockquote {
+  margin: 0.8em 0.4em 0.4em;
+}
+figcaption, caption {
+  font-style: italic;
+  margin: 0.5em 1.5em;
+  text-align: left;
+  caption-side: bottom;
+}
+@media screen {
+  /* Auto-collapse boilerplate. */
+  :is(#status-of-memo, #copyright) p {
+    margin: -2px 0;
+    max-height: 0;
+    transition: max-height 2s ease, margin 0.5s ease 0.5s;
+    overflow: hidden;
+  }
+  :is(#status-of-memo, #copyright):hover p,
+  :is(#status-of-memo, #copyright) h2:target ~ p {
+    margin: 0.5em 0;
+    max-height: 500px;
+    overflow: auto;
+  }
+  pre, svg {
+    display: inline-block;
+    /* In the horizontal direction, sometimes people make over-sized figures.
+       Scrollbars for those is therefore necessary: auto adds them as necessary..
+       In the vertical direction, the line-height can combine with the font
+       asender/descender height to produce scrollbars: hidden avoids that. */
+    overflow: auto hidden;
+  }
+  pre {
+    max-width: 100%;
+    width: calc(100% - 22px - 1em);
+  }
+  svg {
+    max-width: calc(100% - 22px - 1em);
+  }
+  figure pre {
+    display: block;
+    width: calc(100% - 25px);
+  }
+  :is(pre, svg) + .pilcrow {
+    display: inline-block;
+    vertical-align: text-bottom;
+    padding-bottom: 8px;
+  }
+}
+
+/* aside, blockquote */
+aside, blockquote {
+  margin-left: 0;
+  padding: 0 2em;
+  font-style: italic;
+}
+blockquote {
+  margin: 1em 0;
+  border-left: 2px var(--pilcrow-strong) solid;
+}
+cite {
+  display: block;
+  text-align: right;
+  font-style: italic;
+}
+
+/* tables */
+table {
+  width: auto;
+  max-width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+}
+table.right {
+  margin-left: auto;
+}
+table.center {
+  margin-left: auto;
+  margin-right: auto;
+}
+table.left {
+  margin-right: auto;
+}
+table .text-left {
+  text-align: left;
+}
+table .text-center {
+  text-align: center;
+}
+table .text-right {
+  text-align: right;
+}
+
+thead, tbody {
+  border: 1px solid var(--line-color);
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 5px 10px;
+}
+th {
+  background-color: var(--line-color);
+}
+:is(tr:nth-child(2n), thead+tbody > tr:nth-child(2n+1)) > td {
+  background-color: var(--background-color);
+}
+:is(tr:nth-child(2n+1), thead+tbody > tr:nth-child(2n)) > td {
+  background-color: var(--highlight-color);
+}
+table caption {
+  margin: 0;
+  padding: 3px 0 3px 1em;
+}
+table p {
+  margin: 0;
+}
+
+/* pilcrow */
+a.pilcrow {
+  margin-left: 3px;
+  opacity: 0.2;
+  user-select: none;
+  &[href] {
+    color: var(--pilcrow-weak);
+    &:hover { text-decoration: none; }
+  }
+}
+@media not print {
+  :hover > a.pilcrow, a.pilcrow:focus {
+    opacity: 1;
+  }
+  a.pilcrow[href]:hover {
+    color: var(--pilcrow-strong);
+    background-color: transparent;
+  }
+}
+@media print {
+  a.pilcrow {
+    display: none;
+  }
+}
+
+/* misc */
+hr {
+  border: 0;
+  border-top: 1px solid var(--line-color);
+}
+.bcp14 {
+  font-variant: small-caps;
+  font-weight: 600;
+  font-size: var(--small-font-size);
+}
+.role {
+  font-variant: all-small-caps;
+}
+sub, sup {
+  line-height: 1;
+  font-size: 80%;
+}
+
+/* info block */
+#identifiers {
+  margin: 0;
+  font-size: var(--small-font-size);
+  line-height: 18px;
+  --identifier-width: 15ch;
+  & dt {
+    width: var(--identifier-width);
+    min-width: var(--identifier-width);
+    clear: left;
+    float: left;
+    text-align: right;
+    margin-right: 1ch;
+  }
+  & dd {
+    margin: 0;
+    margin-left: calc(1em + var(--identifier-width)) !important;
+    min-width: 5em;
+  }
+  & .authors {
+    & .author {
+      display: inline-block;
+      margin-right: 1.5em;
+    }
+    & .org {
+      font-style: italic;
+    }
+  }
+}
+
+/* The prepared/rendered info at the very bottom of the page */
+.docInfo {
+  color: #999;
+  font-size: 0.9em;
+  font-style: italic;
+  margin-top: 2em;
+}
+.docInfo .prepared {
+  float: right;
+}
+
+/* table of contents */
+#toc {
+  padding: 0.75em 0 2em 0;
+  margin-bottom: 1em;
+
+  & nav {
+    & ul {
+      margin: 0 0.5em 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    & li {
+      line-height: 1.3em;
+      margin: 2px 0;
+      padding-left: 1.2em;
+      text-indent: -1.2em;
+    }
+  }
+  & a.xref {
+    white-space: normal;
+  }
+}
+
+.references {
+  & > dt {
+    text-align: right;
+    font-weight: bold;
+    min-width: 10ch;
+    margin-right: 1.5ch;
+    &:target::before {
+      content: "⇒";
+      margin: 0 10px 0 -25px;
+    }
+  }
+  & > dd {
+    margin-left: 12ch !important;
+    overflow: visible;
+    & .refInstance {
+      margin-bottom: 0.8em;
+    }
+    & .ascii {
+      margin-bottom: 0.25em;
+    }
+  }
+}
+
+#rfc\.index\.index + ul {
+  margin-left: 0;
+}
+
+/* authors */
+address.vcard {
+  font-style: normal;
+  max-width: 20em;
+  margin: 1em auto 1em 0;
+
+  & .nameRole {
+    font-weight: 700;
+    margin-left: 0;
+  }
+  & .label {
+    margin: 0.5em 0;
+  }
+  & .type {
+    display: none;
+  }
+  & .alternative-contact {
+    margin: 0.5em 0 0.25em 0;
+  }
+  & .non-ascii {
+    margin: 0 0 0 2em;
+  }
+  & div.left {
+    text-align: left;
+  }
+  & div.right {
+    text-align: right;
+  }
+}
+
+hr.addr {
+  border-top: 1px dashed;
+  margin: 0;
+  color: #ddd;
+  max-width: calc(100% - 16px);
+}
+@media (min-width: 500px) {
+  #authors-addresses > section {
+    column-count: 2;
+    column-gap: 20px;
+  }
+  #authors-addresses > section > h2 {
+    column-span: all;
+  }
+  /* hack for break-inside: avoid-column */
+  #authors-addresses address {
+    display: inline-block;
+    break-inside: avoid-column;
+  }
+}
+
+/* Comments */
+.rfcEditorRemove p:first-of-type {
+  font-style: italic;
+}
+.cref {
+  background-color: rgba(249, 232, 105, 0.3);
+  padding: 2px 4px;
+}
+.crefSource {
+  font-style: italic;
+}
+
+@media screen {
+  #toc nav {
+    font-family: var(--font-title);
+    font-weight: 360;
+    & > ul { margin-bottom: 2em; }
+    & ul {
+      margin: 0 0 0 4px;
+      & :is(p, li) {
+        margin: 2px 0;
+      }
+    }
+  }
+  #toc a.toplink {
+    float: right;
+  }
+}
+@media not screen {
+  #toc a.toplink {
+    display: none;
+  }
+}
+
+
+/* TOC layout for smaller screens */
+@media screen and (max-width: 929px) {
+  #toc {
+    position: fixed;
+    z-index: 2;
+    top: 0;
+    right: 0;
+    padding: 1px 0 0 0;
+    margin: 0;
+    border-bottom: 1px solid #ccc;
+    opacity: 0.6;
+  }
+  #toc h2 {
+    margin: 0;
+    padding: 2px 0 2px 6px;
+    padding-right: 1em;
+    font-size: 18px;
+    line-height: 24px;
+    min-width: 190px;
+    text-align: right;
+    background-color: #444;
+    color: white;
+    cursor: pointer;
+    &::before { /* css hamburger */
+      float: right;
+      position: relative;
+      width: 1em;
+      height: 1px;
+      left: -164px;
+      margin: 8px 0 0 0;
+      background: white none repeat scroll 0 0;
+      box-shadow: 0 4px 0 0 white, 0 8px 0 0 white;
+      content: "";
+    }
+  }
+  #toc nav {
+    display: none;
+    background-color: var(--background-color);
+    padding: 0.5em 1em 1em;
+    overflow: auto;
+    overscroll-behavior: contain;
+    height: calc(100vh - 48px);
+    border-left: 1px solid #ddd;
+  }
+  #toc.active {
+    opacity: 1;
+    & nav { display: block; }
+  }
+  /* Make the collapsed ToC header render white on gray also when it's a link */
+  #toc h2 a,
+  #toc h2 a:is(:link, :focus, :hover),
+  #toc a.toplink,
+  #toc a.toplink:hover {
+    color: white;
+    background-color: #444;
+    text-decoration: none;
+  }
+  #toc a.toplink {
+    margin: 2px 0.5em 0;
+  }
+}
+
+/* TOC layout for wide screens */
+@media screen and (min-width: 930px) {
+  body {
+    padding-right: 360px;
+    padding-right: calc(min(180px + 20%, 500px));
+  }
+  #toc {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    right: calc(50vw - 480px);
+    width: 312px;
+    margin: 0;
+    padding: 0;
+    z-index: 1;
+  }
+  #toc h2 {
+    margin: 0;
+    padding: 0.25em 1em 1em 0;
+  }
+  #toc nav {
+    display: block;
+    height: calc(90vh - 84px);
+    bottom: 0;
+    padding: 0.5em 0 2em;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+  img { /* future proofing */
+    max-width: 100%;
+    height: auto;
+  }
+  #toc a.toplink {
+    margin: 8px 0.5em 0;
+  }
+}
+
+/* pagination */
+@media print {
+  body {
+    width: 100%;
+  }
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+  #n-copyright-notice {
+    border-bottom: none;
+  }
+  #toc, #n-introduction {
+    page-break-before: always;
+  }
+  #toc {
+    border-top: none;
+    padding-top: 0;
+  }
+  figure, pre, .vcard {
+    page-break-inside: avoid;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+  :is(h2, h3, h4, h5, h6)+*, dd {
+    page-break-before: avoid;
+  }
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 10pt;
+  }
+  table {
+    border: 1px solid #ddd;
+  }
+  td {
+    border-top: 1px solid #ddd;
+  }
+}
+
+@page :first {
+  padding-top: 0;
+  @top-left {
+    content: normal;
+    border: none;
+  }
+  @top-center {
+    content: normal;
+    border: none;
+  }
+  @top-right {
+    content: normal;
+    border: none;
+  }
+}
+
+@page {
+  size: A4;
+  margin-bottom: 45mm;
+  padding-top: 20px;
+}
+
+/* Dark mode. */
+@media (prefers-color-scheme: dark) {
+:root {
+  --background-color: #121212;
+  --text-color: #f0f0f0;
+  --title-color: #fff;
+  --link-color: #4da4f0;
+  --highlight-color: #282828;
+  --line-color: #444;
+  --pilcrow-weak: #444;
+  --pilcrow-strong: #666;
+  scrollbar-color: #777 #333;
+}
+}
+
+/* SVG Trick: a prefix match works because only black and white are allowed */
+svg :is([stroke="black"], [stroke^="#000"]) {
+  stroke: var(--text-color);
+}
+svg :is([stroke="white"], [stroke^="#fff"]) {
+  stroke: var(--background-color);
+}
+svg :is([fill="black"], [fill^="#000"], :not([fill])) {
+  fill: var(--text-color);
+}
+svg :is([fill="white"], [fill^="#fff"]) {
+  fill: var(--background-color);
+}
+</style>
+
+</head>
+<body class="xml2rfc">
+<table class="ears">
+<thead><tr>
+<td class="left">Internet-Draft</td>
+<td class="center">PRISM</td>
+<td class="right">February 2026</td>
+</tr></thead>
+<tfoot><tr>
+<td class="left">V</td>
+<td class="center">Expires 7 August 2026</td>
+<td class="right">[Page]</td>
+</tr></tfoot>
+</table>
+<div id="external-metadata" class="document-information"></div>
+<div id="internal-metadata" class="document-information">
+<dl id="identifiers">
+<dt class="label-workgroup">Workgroup:</dt>
+<dd class="workgroup">Internet Engineering Task Force</dd>
+<dt class="label-internet-draft">Internet-Draft:</dt>
+<dd class="internet-draft">draft-prism-sdwan-latest</dd>
+<dt class="label-published">Published:</dt>
+<dd class="published">
+<time datetime="2026-02-03" class="published">3 February 2026</time>
+    </dd>
+<dt class="label-intended-status">Intended Status:</dt>
+<dd class="intended-status">Standards Track</dd>
+<dt class="label-expires">Expires:</dt>
+<dd class="expires"><time datetime="2026-08-07">7 August 2026</time></dd>
+<dt class="label-authors">Author:</dt>
+<dd class="authors">
+<div class="author">
+      <div class="author-name">J. E. W. V</div>
+<div class="org">Department of the Air Force</div>
+</div>
+</dd>
+</dl>
+</div>
+<h1 id="title">PRISM: Protocol for Routing Intelligent Service Mapping</h1>
+<section id="section-abstract">
+      <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
+<p id="section-abstract-1">
+        This document specifies PRISM, an application-aware traffic steering
+        protocol for Software-Defined Wide Area Networks (SD-WAN). PRISM
+        provides deep application identification, per-flow tracking, Service
+        Level Agreement (SLA) enforcement, and policy-based path selection
+        integration with Segment Routing over IPv6 (SRv6).<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+<p id="section-abstract-2"> PRISM is designed as a companion protocol to CONDUIT (Cryptographic Orchestration of
+        Network Distributed Underlay for IPsec Transport), together providing a complete
+        open-standard SD-WAN solution. CONDUIT manages the encrypted tunnel fabric while PRISM
+        provides the application intelligence and policy enforcement.<a href="#section-abstract-2" class="pilcrow">¶</a></p>
+<p id="section-abstract-3">
+        The protocol is fully programmable via gRPC, supports distributed and
+        centralized deployment models, and mandates compliance with
+        Commercial National Security Algorithm Suite 2.0 (CNSA 2.0)
+        cryptographic requirements.<a href="#section-abstract-3" class="pilcrow">¶</a></p>
+</section>
+<div id="status-of-memo">
+<section id="section-boilerplate.1">
+        <h2 id="name-status-of-this-memo">
+<a href="#name-status-of-this-memo" class="section-name selfRef">Status of This Memo</a>
+        </h2>
+<p id="section-boilerplate.1-1">
+        This Internet-Draft is submitted in full conformance with the
+        provisions of BCP 78 and BCP 79.<a href="#section-boilerplate.1-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-2">
+        Internet-Drafts are working documents of the Internet Engineering Task
+        Force (IETF). Note that other groups may also distribute working
+        documents as Internet-Drafts. The list of current Internet-Drafts is
+        at <span><a href="https://datatracker.ietf.org/drafts/current/">https://datatracker.ietf.org/drafts/current/</a></span>.<a href="#section-boilerplate.1-2" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-3">
+        Internet-Drafts are draft documents valid for a maximum of six months
+        and may be updated, replaced, or obsoleted by other documents at any
+        time. It is inappropriate to use Internet-Drafts as reference
+        material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-4">
+        This Internet-Draft will expire on 7 August 2026.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="copyright">
+<section id="section-boilerplate.2">
+        <h2 id="name-copyright-notice">
+<a href="#name-copyright-notice" class="section-name selfRef">Copyright Notice</a>
+        </h2>
+<p id="section-boilerplate.2-1">
+            Copyright (c) 2026 IETF Trust and the persons identified as the
+            document authors. All rights reserved.<a href="#section-boilerplate.2-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.2-2">
+            This document is subject to BCP 78 and the IETF Trust's Legal
+            Provisions Relating to IETF Documents
+            (<span><a href="https://trustee.ietf.org/license-info">https://trustee.ietf.org/license-info</a></span>) in effect on the date of
+            publication of this document. Please review these documents
+            carefully, as they describe your rights and restrictions with
+            respect to this document. Code Components extracted from this
+            document must include Revised BSD License text as described in
+            Section 4.e of the Trust Legal Provisions and are provided without
+            warranty as described in the Revised BSD License.<a href="#section-boilerplate.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="toc">
+<section id="section-toc.1">
+        <a href="#" onclick="scroll(0,0)" class="toplink">▲</a><h2 id="name-table-of-contents">
+<a href="#name-table-of-contents" class="section-name selfRef">Table of Contents</a>
+        </h2>
+<nav class="toc"><ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1">
+            <p id="section-toc.1-1.1.1"><a href="#section-1" class="auto internal xref">1</a>.  <a href="#name-introduction" class="internal xref">Introduction</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.1">
+                <p id="section-toc.1-1.1.2.1.1" class="keepWithNext"><a href="#section-1.1" class="auto internal xref">1.1</a>.  <a href="#name-problem-statement" class="internal xref">Problem Statement</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.2">
+                <p id="section-toc.1-1.1.2.2.1" class="keepWithNext"><a href="#section-1.2" class="auto internal xref">1.2</a>.  <a href="#name-relationship-to-conduit" class="internal xref">Relationship to CONDUIT</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.3">
+                <p id="section-toc.1-1.1.2.3.1" class="keepWithNext"><a href="#section-1.3" class="auto internal xref">1.3</a>.  <a href="#name-design-goals" class="internal xref">Design Goals</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.4">
+                <p id="section-toc.1-1.1.2.4.1"><a href="#section-1.4" class="auto internal xref">1.4</a>.  <a href="#name-scope" class="internal xref">Scope</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2">
+            <p id="section-toc.1-1.2.1"><a href="#section-2" class="auto internal xref">2</a>.  <a href="#name-conventions-and-terminology" class="internal xref">Conventions and Terminology</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2.2.1">
+                <p id="section-toc.1-1.2.2.1.1"><a href="#section-2.1" class="auto internal xref">2.1</a>.  <a href="#name-requirements-language" class="internal xref">Requirements Language</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2.2.2">
+                <p id="section-toc.1-1.2.2.2.1"><a href="#section-2.2" class="auto internal xref">2.2</a>.  <a href="#name-definitions" class="internal xref">Definitions</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3">
+            <p id="section-toc.1-1.3.1"><a href="#section-3" class="auto internal xref">3</a>.  <a href="#name-architecture" class="internal xref">Architecture</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.1">
+                <p id="section-toc.1-1.3.2.1.1"><a href="#section-3.1" class="auto internal xref">3.1</a>.  <a href="#name-system-overview" class="internal xref">System Overview</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.2">
+                <p id="section-toc.1-1.3.2.2.1"><a href="#section-3.2" class="auto internal xref">3.2</a>.  <a href="#name-deployment-models" class="internal xref">Deployment Models</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4">
+            <p id="section-toc.1-1.4.1"><a href="#section-4" class="auto internal xref">4</a>.  <a href="#name-application-identification" class="internal xref">Application Identification</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.1">
+                <p id="section-toc.1-1.4.2.1.1"><a href="#section-4.1" class="auto internal xref">4.1</a>.  <a href="#name-identification-methods" class="internal xref">Identification Methods</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.2">
+                <p id="section-toc.1-1.4.2.2.1"><a href="#section-4.2" class="auto internal xref">4.2</a>.  <a href="#name-encrypted-traffic-analysis" class="internal xref">Encrypted Traffic Analysis</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.3">
+                <p id="section-toc.1-1.4.2.3.1"><a href="#section-4.3" class="auto internal xref">4.3</a>.  <a href="#name-application-categories" class="internal xref">Application Categories</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5">
+            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-flow-management" class="internal xref">Flow Management</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.1">
+                <p id="section-toc.1-1.5.2.1.1"><a href="#section-5.1" class="auto internal xref">5.1</a>.  <a href="#name-flow-identification" class="internal xref">Flow Identification</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.2">
+                <p id="section-toc.1-1.5.2.2.1"><a href="#section-5.2" class="auto internal xref">5.2</a>.  <a href="#name-flow-lifecycle" class="internal xref">Flow Lifecycle</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6">
+            <p id="section-toc.1-1.6.1"><a href="#section-6" class="auto internal xref">6</a>.  <a href="#name-policy-framework" class="internal xref">Policy Framework</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.1">
+                <p id="section-toc.1-1.6.2.1.1"><a href="#section-6.1" class="auto internal xref">6.1</a>.  <a href="#name-policy-model" class="internal xref">Policy Model</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.2">
+                <p id="section-toc.1-1.6.2.2.1"><a href="#section-6.2" class="auto internal xref">6.2</a>.  <a href="#name-match-conditions" class="internal xref">Match Conditions</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.3">
+                <p id="section-toc.1-1.6.2.3.1"><a href="#section-6.3" class="auto internal xref">6.3</a>.  <a href="#name-actions" class="internal xref">Actions</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.4">
+                <p id="section-toc.1-1.6.2.4.1"><a href="#section-6.4" class="auto internal xref">6.4</a>.  <a href="#name-sla-definitions" class="internal xref">SLA Definitions</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7">
+            <p id="section-toc.1-1.7.1"><a href="#section-7" class="auto internal xref">7</a>.  <a href="#name-srv6-integration" class="internal xref">SRv6 Integration</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.1">
+                <p id="section-toc.1-1.7.2.1.1"><a href="#section-7.1" class="auto internal xref">7.1</a>.  <a href="#name-traffic-class-to-srv6-color" class="internal xref">Traffic Class to SRv6 Color Mapping</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.2">
+                <p id="section-toc.1-1.7.2.2.1"><a href="#section-7.2" class="auto internal xref">7.2</a>.  <a href="#name-dynamic-path-selection" class="internal xref">Dynamic Path Selection</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8">
+            <p id="section-toc.1-1.8.1"><a href="#section-8" class="auto internal xref">8</a>.  <a href="#name-sla-monitoring-and-enforcem" class="internal xref">SLA Monitoring and Enforcement</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8.2.1">
+                <p id="section-toc.1-1.8.2.1.1"><a href="#section-8.1" class="auto internal xref">8.1</a>.  <a href="#name-sla-metrics" class="internal xref">SLA Metrics</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8.2.2">
+                <p id="section-toc.1-1.8.2.2.1"><a href="#section-8.2" class="auto internal xref">8.2</a>.  <a href="#name-remediation-actions" class="internal xref">Remediation Actions</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9">
+            <p id="section-toc.1-1.9.1"><a href="#section-9" class="auto internal xref">9</a>.  <a href="#name-control-protocol" class="internal xref">Control Protocol</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.1">
+                <p id="section-toc.1-1.9.2.1.1"><a href="#section-9.1" class="auto internal xref">9.1</a>.  <a href="#name-transport" class="internal xref">Transport</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.2">
+                <p id="section-toc.1-1.9.2.2.1"><a href="#section-9.2" class="auto internal xref">9.2</a>.  <a href="#name-message-header" class="internal xref">Message Header</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.3">
+                <p id="section-toc.1-1.9.2.3.1"><a href="#section-9.3" class="auto internal xref">9.3</a>.  <a href="#name-message-types" class="internal xref">Message Types</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10">
+            <p id="section-toc.1-1.10.1"><a href="#section-10" class="auto internal xref">10</a>. <a href="#name-grpc-api" class="internal xref">gRPC API</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11">
+            <p id="section-toc.1-1.11.1"><a href="#section-11" class="auto internal xref">11</a>. <a href="#name-cryptographic-requirements" class="internal xref">Cryptographic Requirements</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12">
+            <p id="section-toc.1-1.12.1"><a href="#section-12" class="auto internal xref">12</a>. <a href="#name-security-considerations" class="internal xref">Security Considerations</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.1">
+                <p id="section-toc.1-1.12.2.1.1"><a href="#section-12.1" class="auto internal xref">12.1</a>.  <a href="#name-privacy-considerations" class="internal xref">Privacy Considerations</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.2">
+                <p id="section-toc.1-1.12.2.2.1"><a href="#section-12.2" class="auto internal xref">12.2</a>.  <a href="#name-application-identification-" class="internal xref">Application Identification Risks</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.3">
+                <p id="section-toc.1-1.12.2.3.1"><a href="#section-12.3" class="auto internal xref">12.3</a>.  <a href="#name-policy-security" class="internal xref">Policy Security</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13">
+            <p id="section-toc.1-1.13.1"><a href="#section-13" class="auto internal xref">13</a>. <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.1">
+                <p id="section-toc.1-1.13.2.1.1"><a href="#section-13.1" class="auto internal xref">13.1</a>.  <a href="#name-udp-port-allocation" class="internal xref">UDP Port Allocation</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.2">
+                <p id="section-toc.1-1.13.2.2.1"><a href="#section-13.2" class="auto internal xref">13.2</a>.  <a href="#name-application-category-regist" class="internal xref">Application Category Registry</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14">
+            <p id="section-toc.1-1.14.1"><a href="#section-14" class="auto internal xref">14</a>. <a href="#name-references" class="internal xref">References</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14.2.1">
+                <p id="section-toc.1-1.14.2.1.1"><a href="#section-14.1" class="auto internal xref">14.1</a>.  <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14.2.2">
+                <p id="section-toc.1-1.14.2.2.1"><a href="#section-14.2" class="auto internal xref">14.2</a>.  <a href="#name-informative-references" class="internal xref">Informative References</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15">
+            <p id="section-toc.1-1.15.1"><a href="#appendix-A" class="auto internal xref"></a><a href="#name-acknowledgements" class="internal xref">Acknowledgements</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16">
+            <p id="section-toc.1-1.16.1"><a href="#appendix-B" class="auto internal xref"></a><a href="#name-authors-address" class="internal xref">Author's Address</a></p>
+</li>
+        </ul>
+</nav>
+</section>
+</div>
+<div id="sect-1">
+<section id="section-1">
+      <h2 id="name-introduction">
+<a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
+      </h2>
+<div id="sect-1.1">
+<section id="section-1.1">
+        <h3 id="name-problem-statement">
+<a href="#section-1.1" class="section-number selfRef">1.1. </a><a href="#name-problem-statement" class="section-name selfRef">Problem Statement</a>
+        </h3>
+<p id="section-1.1-1">
+          Software-Defined Wide Area Networks (SD-WAN) have emerged as a
+          critical technology for enterprises and tactical networks requiring
+          Intelligent traffic management across multiple WAN connections.
+          However, existing SD-WAN solutions are predominantly proprietary,
+          creating several challenges:<a href="#section-1.1-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-1.1-2">
+          <dt id="section-1.1-2.1">Vendor Lock-in:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-2.2">
+            <p id="section-1.1-2.2.1">
+              Organizations deploying proprietary SD-WAN solutions<a href="#section-1.1-2.2.1" class="pilcrow">¶</a></p>
+<p id="section-1.1-2.2.2">
+              become dependent on a single vendor for features, updates, and
+              interoperability.<a href="#section-1.1-2.2.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.1-2.3">Limited Interoperability:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-2.4">
+            <p id="section-1.1-2.4.1">
+              Proprietary solutions cannot interoperate<a href="#section-1.1-2.4.1" class="pilcrow">¶</a></p>
+<p id="section-1.1-2.4.2">
+              with equipment from other vendors, limiting deployment flexibility
+              and multi-vendor environments.<a href="#section-1.1-2.4.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.1-2.5">Opaque Operation:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-2.6">
+            <p id="section-1.1-2.6.1">
+              Closed implementations prevent security auditing<a href="#section-1.1-2.6.1" class="pilcrow">¶</a></p>
+<p id="section-1.1-2.6.2">
+              and verification of traffic handling behavior.<a href="#section-1.1-2.6.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.1-2.7">Cryptographic Limitations:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-2.8">
+            <p id="section-1.1-2.8.1">
+              Many commercial SD-WAN products do not<a href="#section-1.1-2.8.1" class="pilcrow">¶</a></p>
+<p id="section-1.1-2.8.2">
+              support government-mandated cryptographic standards such as CNSA
+              2.0.<a href="#section-1.1-2.8.2" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+</dl>
+<p id="section-1.1-3">
+          An open-standard SD-WAN protocol would address these limitations by
+          providing a vendor-neutral specification that enables
+          interoperability, permits security auditing, and ensures compliance
+          with required cryptographic standards.<a href="#section-1.1-3" class="pilcrow">¶</a></p>
+<p id="section-1.1-4">
+          SD-WAN functionality comprises two distinct concerns:<a href="#section-1.1-4" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-1.1-5">
+          <li id="section-1.1-5.1">
+            <p id="section-1.1-5.1.1">Tunnel Fabric Management: Creating, monitoring, and maintaining encrypted tunnels
+              across multiple WAN links. <span>[<a href="#I-D.conduit-tunnel-fabric" class="cite xref">I-D.conduit-tunnel-fabric</a>]</span> addresses this
+              function.<a href="#section-1.1-5.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li id="section-1.1-5.2">
+            <p id="section-1.1-5.2.1">Application-Aware Traffic Steering: Identifying applications,
+              tracking flows, enforcing policies, and selecting optimal paths
+              based on application requirements. This function is addressed by
+              PRISM.<a href="#section-1.1-5.2.1" class="pilcrow">¶</a></p>
+</li>
+        </ol>
+</section>
+</div>
+<div id="sect-1.2">
+<section id="section-1.2">
+        <h3 id="name-relationship-to-conduit">
+<a href="#section-1.2" class="section-number selfRef">1.2. </a><a href="#name-relationship-to-conduit" class="section-name selfRef">Relationship to CONDUIT</a>
+        </h3>
+<p id="section-1.2-1"> PRISM and <span>[<a href="#I-D.conduit-tunnel-fabric" class="cite xref">I-D.conduit-tunnel-fabric</a>]</span> together form a complete
+          open-standard SD-WAN solution with clear separation of responsibilities:<a href="#section-1.2-1" class="pilcrow">¶</a></p>
+<p id="section-1.2-2">
+          CONDUIT Responsibilities:<a href="#section-1.2-2" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-1.2-3.1">
+            <p id="section-1.2-3.1.1">IPsec tunnel lifecycle management (creation, deletion, rekeying)<a href="#section-1.2-3.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-1.2-3.2">
+            <p id="section-1.2-3.2.1">Tunnel health monitoring (probing, metrics collection)<a href="#section-1.2-3.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-1.2-3.3">
+            <p id="section-1.2-3.3.1">Metric publishing to SRv6/IGP<a href="#section-1.2-3.3.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-1.2-3.4">
+            <p id="section-1.2-3.4.1">IKEv2 security association management<a href="#section-1.2-3.4.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="section-1.2-4">
+          PRISM Responsibilities:<a href="#section-1.2-4" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-1.2-5.1">
+            <p id="section-1.2-5.1.1">Application identification (deep packet inspection, heuristics)<a href="#section-1.2-5.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-1.2-5.2">
+            <p id="section-1.2-5.2.1">Flow tracking and management<a href="#section-1.2-5.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-1.2-5.3">
+            <p id="section-1.2-5.3.1">Policy definition and enforcement<a href="#section-1.2-5.3.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-1.2-5.4">
+            <p id="section-1.2-5.4.1">SLA monitoring and alerting<a href="#section-1.2-5.4.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-1.2-5.5">
+            <p id="section-1.2-5.5.1">Traffic class assignment for SRv6 steering<a href="#section-1.2-5.5.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="section-1.2-6">
+          The relationship can be summarized as: PRISM decides WHAT traffic
+          class each flow belongs to; SRv6 decides WHICH path to use based on
+          Flex-Algo; CONDUIT ensures the paths EXIST and reports their quality.<a href="#section-1.2-6" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="sect-1.3">
+<section id="section-1.3">
+        <h3 id="name-design-goals">
+<a href="#section-1.3" class="section-number selfRef">1.3. </a><a href="#name-design-goals" class="section-name selfRef">Design Goals</a>
+        </h3>
+<span class="break"></span><dl class="dlNewline" id="section-1.3-1">
+          <dt id="section-1.3-1.1">PRISM is designed to meet the following goals:</dt>
+          <dd style="margin-left: 0.5em" id="section-1.3-1.2"></dd>
+        <dd class="break"></dd>
+</dl>
+<div id="le-1">
+<figure id="figure-1">
+          <div class="alignLeft art-text artwork" id="section-1.3-2.1">
+<pre>
+ +==========================+======================================+
+ | Parameter                | Requirement                          |
+ +==========================+======================================+
+ | Flow Scale               | 10 million concurrent flows per node |
+ +--------------------------+--------------------------------------+
+ | Application Signatures   | 5000+ applications recognized        |
+ +--------------------------+--------------------------------------+
+ | Classification Latency   | Less than 100 microseconds           |
+ +--------------------------+--------------------------------------+
+ | Policy Scale             | 100,000 policies per node            |
+ +--------------------------+--------------------------------------+
+ | SLA Measurement Accuracy | Within 1ms for latency metrics       |
+ +--------------------------+--------------------------------------+
+ | API Coverage             | 100% functionality via gRPC          |
+ +--------------------------+--------------------------------------+
+ | Cryptographic Suite      | Full CNSA 2.0 compliance             |
+ +--------------------------+--------------------------------------+
+</pre>
+</div>
+<figcaption><a href="#figure-1" class="selfRef">Figure 1</a></figcaption></figure>
+</div>
+</section>
+</div>
+<div id="sect-1.4">
+<section id="section-1.4">
+        <h3 id="name-scope">
+<a href="#section-1.4" class="section-number selfRef">1.4. </a><a href="#name-scope" class="section-name selfRef">Scope</a>
+        </h3>
+<p id="section-1.4-1">
+          This document specifies:<a href="#section-1.4-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-1.4-2.1">
+            <p id="section-1.4-2.1.1">Application identification mechanisms and signature format<a href="#section-1.4-2.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-1.4-2.2">
+            <p id="section-1.4-2.2.1">Flow tracking and management procedures<a href="#section-1.4-2.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-1.4-2.3">
+            <p id="section-1.4-2.3.1">Policy framework for traffic steering<a href="#section-1.4-2.3.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-1.4-2.4">
+            <p id="section-1.4-2.4.1">SLA definition and enforcement<a href="#section-1.4-2.4.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-1.4-2.5">
+            <p id="section-1.4-2.5.1">Integration with SRv6 for path selection<a href="#section-1.4-2.5.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-1.4-2.6">
+            <p id="section-1.4-2.6.1">Control protocol for distributed operation<a href="#section-1.4-2.6.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-1.4-2.7">
+            <p id="section-1.4-2.7.1">gRPC API for management and analytics<a href="#section-1.4-2.7.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="section-1.4-3">
+          This document does not specify:<a href="#section-1.4-3" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-1.4-4.1">
+            <p id="section-1.4-4.1.1">Tunnel management (covered by <span>[<a href="#I-D.conduit-tunnel-fabric" class="cite xref">I-D.conduit-tunnel-fabric</a>]</span>)<a href="#section-1.4-4.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-1.4-4.2">
+            <p id="section-1.4-4.2.1">SRv6 data plane operations (covered by <span>[<a href="#RFC8986" class="cite xref">RFC8986</a>]</span>)<a href="#section-1.4-4.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-1.4-4.3">
+            <p id="section-1.4-4.3.1">Specific application signatures (maintained separately)<a href="#section-1.4-4.3.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-1.4-4.4">
+            <p id="section-1.4-4.4.1">Deep packet inspection algorithms (implementation-specific)<a href="#section-1.4-4.4.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+</section>
+</div>
+</section>
+</div>
+<div id="sect-2">
+<section id="section-2">
+      <h2 id="name-conventions-and-terminology">
+<a href="#section-2" class="section-number selfRef">2. </a><a href="#name-conventions-and-terminology" class="section-name selfRef">Conventions and Terminology</a>
+      </h2>
+<div id="sect-2.1">
+<section id="section-2.1">
+        <h3 id="name-requirements-language">
+<a href="#section-2.1" class="section-number selfRef">2.1. </a><a href="#name-requirements-language" class="section-name selfRef">Requirements Language</a>
+        </h3>
+<p id="section-2.1-1"> The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD
+          NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+          interpreted as described in BCP 14 <span>[<a href="#RFC2119" class="cite xref">RFC2119</a>]</span> <span>[<a href="#RFC8174" class="cite xref">RFC8174</a>]</span> when, and only when, they appear in all capitals, as shown here.<a href="#section-2.1-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="sect-2.2">
+<section id="section-2.2">
+        <h3 id="name-definitions">
+<a href="#section-2.2" class="section-number selfRef">2.2. </a><a href="#name-definitions" class="section-name selfRef">Definitions</a>
+        </h3>
+<span class="break"></span><dl class="dlParallel" id="section-2.2-1">
+          <dt id="section-2.2-1.1">Application:</dt>
+          <dd style="margin-left: 1.5em" id="section-2.2-1.2">
+            <p id="section-2.2-1.2.1">
+              A network service or program identified by its traffic<a href="#section-2.2-1.2.1" class="pilcrow">¶</a></p>
+<p id="section-2.2-1.2.2">
+              characteristics, such as Microsoft Teams, Salesforce, or SSH.<a href="#section-2.2-1.2.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-2.2-1.3">Application Category:</dt>
+          <dd style="margin-left: 1.5em" id="section-2.2-1.4">
+            <p id="section-2.2-1.4.1">
+              A grouping of applications with similar<a href="#section-2.2-1.4.1" class="pilcrow">¶</a></p>
+<p id="section-2.2-1.4.2">
+              characteristics or business purposes, such as "unified communications" or "business
+              critical".<a href="#section-2.2-1.4.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-2.2-1.5">Application Signature:</dt>
+          <dd style="margin-left: 1.5em" id="section-2.2-1.6">
+            <p id="section-2.2-1.6.1">
+              A set of patterns or heuristics used to<a href="#section-2.2-1.6.1" class="pilcrow">¶</a></p>
+<p id="section-2.2-1.6.2">
+              Identify a specific application from its network traffic.<a href="#section-2.2-1.6.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-2.2-1.7">Flow:</dt>
+          <dd style="margin-left: 1.5em" id="section-2.2-1.8">
+            <p id="section-2.2-1.8.1">
+              A unidirectional sequence of packets sharing common<a href="#section-2.2-1.8.1" class="pilcrow">¶</a></p>
+<p id="section-2.2-1.8.2">
+              identifying characteristics, typically a 5-tuple of protocol,
+              source address, source port, destination address, and destination
+              port.<a href="#section-2.2-1.8.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-2.2-1.9">Session:</dt>
+          <dd style="margin-left: 1.5em" id="section-2.2-1.10">
+            <p id="section-2.2-1.10.1">
+              A bidirectional communication comprising two related flows<a href="#section-2.2-1.10.1" class="pilcrow">¶</a></p>
+<p id="section-2.2-1.10.2">
+              (forward and reverse directions).<a href="#section-2.2-1.10.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-2.2-1.11">Traffic Class:</dt>
+          <dd style="margin-left: 1.5em" id="section-2.2-1.12">
+            <p id="section-2.2-1.12.1">
+              A classification assigned to flows that maps to<a href="#section-2.2-1.12.1" class="pilcrow">¶</a></p>
+<p id="section-2.2-1.12.2">
+              specific SRv6 treatment, including path selection and QoS.<a href="#section-2.2-1.12.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-2.2-1.13">SLA (Service Level Agreement):</dt>
+          <dd style="margin-left: 1.5em" id="section-2.2-1.14">
+            <p id="section-2.2-1.14.1">
+              A set of performance thresholds that<a href="#section-2.2-1.14.1" class="pilcrow">¶</a></p>
+<p id="section-2.2-1.14.2">
+              define acceptable service quality for an application or traffic
+              class.<a href="#section-2.2-1.14.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-2.2-1.15">Policy:</dt>
+          <dd style="margin-left: 1.5em" id="section-2.2-1.16">
+            <p id="section-2.2-1.16.1">
+              A rule that matches traffic based on specified conditions<a href="#section-2.2-1.16.1" class="pilcrow">¶</a></p>
+<p id="section-2.2-1.16.2">
+              and applies designated actions.<a href="#section-2.2-1.16.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-2.2-1.17">DPI (Deep Packet Inspection):</dt>
+          <dd style="margin-left: 1.5em" id="section-2.2-1.18">
+            <p id="section-2.2-1.18.1">
+              Analysis of packet contents beyond<a href="#section-2.2-1.18.1" class="pilcrow">¶</a></p>
+<p id="section-2.2-1.18.2">
+              layer 4 headers to identify applications.<a href="#section-2.2-1.18.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-2.2-1.19">PRISM Node:</dt>
+          <dd style="margin-left: 1.5em" id="section-2.2-1.20">
+            <p id="section-2.2-1.20.1">
+              A device implementing the PRISM protocol, typically co-<a href="#section-2.2-1.20.1" class="pilcrow">¶</a></p>
+<p id="section-2.2-1.20.2">
+              located with a CONDUIT node.<a href="#section-2.2-1.20.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-2.2-1.21">PRISM Controller:</dt>
+          <dd style="margin-left: 1.5em" id="section-2.2-1.22">
+            <p id="section-2.2-1.22.1">
+              A centralized management entity that distributes<a href="#section-2.2-1.22.1" class="pilcrow">¶</a></p>
+<p id="section-2.2-1.22.2">
+              policies and aggregates analytics from PRISM nodes.<a href="#section-2.2-1.22.2" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+</dl>
+</section>
+</div>
+</section>
+</div>
+<div id="sect-3">
+<section id="section-3">
+      <h2 id="name-architecture">
+<a href="#section-3" class="section-number selfRef">3. </a><a href="#name-architecture" class="section-name selfRef">Architecture</a>
+      </h2>
+<div id="sect-3.1">
+<section id="section-3.1">
+        <h3 id="name-system-overview">
+<a href="#section-3.1" class="section-number selfRef">3.1. </a><a href="#name-system-overview" class="section-name selfRef">System Overview</a>
+        </h3>
+<p id="section-3.1-1">
+          A PRISM deployment consists of the following components:<a href="#section-3.1-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-3.1-2">
+          <dt id="section-3.1-2.1">PRISM Controller:</dt>
+          <dd style="margin-left: 1.5em" id="section-3.1-2.2">
+            <p id="section-3.1-2.2.1">
+              A centralized or distributed management entity<a href="#section-3.1-2.2.1" class="pilcrow">¶</a></p>
+<p id="section-3.1-2.2.2">
+              responsible for policy management and distribution, application
+              signature database maintenance, aggregated analytics, and
+              reporting, and SLA monitoring dashboard.<a href="#section-3.1-2.2.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-3.1-2.3">PRISM Node:</dt>
+          <dd style="margin-left: 1.5em" id="section-3.1-2.4">
+            <p id="section-3.1-2.4.1">
+              A data plane element deployed at network edges<a href="#section-3.1-2.4.1" class="pilcrow">¶</a></p>
+<p id="section-3.1-2.4.2">
+              responsible for application identification, flow tracking, and
+              classification, policy enforcement, per-flow metrics collection,
+              and SRv6 traffic class assignment.<a href="#section-3.1-2.4.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-3.1-2.5">CONDUIT Node:</dt>
+          <dd style="margin-left: 1.5em" id="section-3.1-2.6">
+            <p id="section-3.1-2.6.1">
+              Co-located tunnel fabric manager providing IPsec<a href="#section-3.1-2.6.1" class="pilcrow">¶</a></p>
+<p id="section-3.1-2.6.2">
+              tunnel management and path quality metrics (feeds into SLA
+              calculations).<a href="#section-3.1-2.6.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-3.1-2.7">SRv6 Data Plane:</dt>
+          <dd style="margin-left: 1.5em" id="section-3.1-2.8">
+            <p id="section-3.1-2.8.1">
+              Forwarding plane that executes traffic engineering<a href="#section-3.1-2.8.1" class="pilcrow">¶</a></p>
+<p id="section-3.1-2.8.2">
+              decisions based on traffic class assignments from PRISM.<a href="#section-3.1-2.8.2" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+</dl>
+</section>
+</div>
+<div id="sect-3.2">
+<section id="section-3.2">
+        <h3 id="name-deployment-models">
+<a href="#section-3.2" class="section-number selfRef">3.2. </a><a href="#name-deployment-models" class="section-name selfRef">Deployment Models</a>
+        </h3>
+<p id="section-3.2-1">
+          PRISM supports multiple deployment models:<a href="#section-3.2-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-3.2-2">
+          <dt id="section-3.2-2.1">Distributed Mode:</dt>
+          <dd style="margin-left: 1.5em" id="section-3.2-2.2">
+            <p id="section-3.2-2.2.1">
+              Each PRISM node operates independently. Policies<a href="#section-3.2-2.2.1" class="pilcrow">¶</a></p>
+<p id="section-3.2-2.2.2">
+              are configured locally on each node. No central controller required.
+              Suitable for small deployments or disconnected operations.<a href="#section-3.2-2.2.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-3.2-2.3">Centralized Mode:</dt>
+          <dd style="margin-left: 1.5em" id="section-3.2-2.4">
+            <p id="section-3.2-2.4.1">
+              PRISM Controller manages all nodes. Policies<a href="#section-3.2-2.4.1" class="pilcrow">¶</a></p>
+<p id="section-3.2-2.4.2">
+              are defined centrally and distributed to nodes. Centralized analytics
+              and reporting. Suitable for enterprise deployments.<a href="#section-3.2-2.4.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-3.2-2.5">Hierarchical Mode:</dt>
+          <dd style="margin-left: 1.5em" id="section-3.2-2.6">
+            <p id="section-3.2-2.6.1">
+              Regional controllers manage local nodes. Global<a href="#section-3.2-2.6.1" class="pilcrow">¶</a></p>
+<p id="section-3.2-2.6.2">
+              controller coordinates regional controllers. Policies can be
+              global, regional, or local. Suitable for large distributed
+              deployments.<a href="#section-3.2-2.6.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-3.2-2.7">Hybrid Mode:</dt>
+          <dd style="margin-left: 1.5em" id="section-3.2-2.8">
+            <p id="section-3.2-2.8.1">
+              Central controller for policy distribution. Local<a href="#section-3.2-2.8.1" class="pilcrow">¶</a></p>
+<p id="section-3.2-2.8.2">
+              autonomy for real-time decisions. Nodes operate independently if
+              the controller is unreachable. Suitable for tactical/resilient
+              deployments.<a href="#section-3.2-2.8.2" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+</dl>
+</section>
+</div>
+</section>
+</div>
+<div id="sect-4">
+<section id="section-4">
+      <h2 id="name-application-identification">
+<a href="#section-4" class="section-number selfRef">4. </a><a href="#name-application-identification" class="section-name selfRef">Application Identification</a>
+      </h2>
+<div id="sect-4.1">
+<section id="section-4.1">
+        <h3 id="name-identification-methods">
+<a href="#section-4.1" class="section-number selfRef">4.1. </a><a href="#name-identification-methods" class="section-name selfRef">Identification Methods</a>
+        </h3>
+<span class="break"></span><dl class="dlNewline" id="section-4.1-1">
+          <dt id="section-4.1-1.1">PRISM employs multiple methods to identify applications:</dt>
+          <dd style="margin-left: 0.5em" id="section-4.1-1.2"></dd>
+        <dd class="break"></dd>
+</dl>
+<div id="le-2">
+<figure id="figure-2">
+          <div class="alignLeft art-text artwork" id="section-4.1-2.1">
+<pre>
+   +=======================+=======+=============================+
+   | Method                | Layer | Description                 |
+   +=======================+=======+=============================+
+   | Port-based            | L4    | Well-known ports (SSH=22)   |
+   +-----------------------+-------+-----------------------------+
+   | Protocol Signature    | L7    | Pattern matching in payload |
+   +-----------------------+-------+-----------------------------+
+   | TLS/SNI Analysis      | L7    | Server Name Indication      |
+   +-----------------------+-------+-----------------------------+
+   | DNS Correlation       | L7    | Map DNS queries to flows    |
+   +-----------------------+-------+-----------------------------+
+   | Certificate Analysis  | L7    | X.509 certificate fields    |
+   +-----------------------+-------+-----------------------------+
+   | Behavioral Heuristics | L3-L7 | Traffic patterns/timing     |
+   +-----------------------+-------+-----------------------------+
+   | Machine Learning      | L3-L7 | Trained classifiers         |
+   +-----------------------+-------+-----------------------------+
+   | IP Reputation         | L3    | Known service IP ranges     |
+   +-----------------------+-------+-----------------------------+
+</pre>
+</div>
+<figcaption><a href="#figure-2" class="selfRef">Figure 2</a></figcaption></figure>
+</div>
+<p id="section-4.1-3">
+          Classification proceeds through methods in order of reliability until
+          a confident identification is achieved.<a href="#section-4.1-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="sect-4.2">
+<section id="section-4.2">
+        <h3 id="name-encrypted-traffic-analysis">
+<a href="#section-4.2" class="section-number selfRef">4.2. </a><a href="#name-encrypted-traffic-analysis" class="section-name selfRef">Encrypted Traffic Analysis</a>
+        </h3>
+<p id="section-4.2-1">
+          For encrypted traffic (TLS/DTLS), PRISM uses metadata analysis
+          without decryption:<a href="#section-4.2-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-4.2-2">
+          <dt id="section-4.2-2.1">TLS Server Name Indication (SNI):</dt>
+          <dd style="margin-left: 1.5em" id="section-4.2-2.2">
+            <p id="section-4.2-2.2.1">
+              The SNI field in the TLS<a href="#section-4.2-2.2.1" class="pilcrow">¶</a></p>
+<p id="section-4.2-2.2.2">
+              The client Hello message reveals the intended server hostname. This is
+              the primary method for HTTPS classification.<a href="#section-4.2-2.2.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-4.2-2.3">TLS Certificate Analysis:</dt>
+          <dd style="margin-left: 1.5em" id="section-4.2-2.4">
+            <p id="section-4.2-2.4.1">
+              Server certificates contain identifying<a href="#section-4.2-2.4.1" class="pilcrow">¶</a></p>
+<p id="section-4.2-2.4.2">
+              information, including Common Name, Subject Alternative Names,
+              Organization, and Issuer.<a href="#section-4.2-2.4.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-4.2-2.5">JA3/JA3S Fingerprinting:</dt>
+          <dd style="margin-left: 1.5em" id="section-4.2-2.6">
+            <p id="section-4.2-2.6.1">
+              TLS handshake characteristics create a unique<a href="#section-4.2-2.6.1" class="pilcrow">¶</a></p>
+<p id="section-4.2-2.6.2">
+              fingerprints for client and server implementations.<a href="#section-4.2-2.6.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-4.2-2.7">Encrypted Traffic Behavioral Analysis:</dt>
+          <dd style="margin-left: 1.5em" id="section-4.2-2.8">
+            <p id="section-4.2-2.8.1">
+              Statistical analysis of<a href="#section-4.2-2.8.1" class="pilcrow">¶</a></p>
+<p id="section-4.2-2.8.2">
+              packet sizes, timing, and directionality can identify applications
+              without payload inspection.<a href="#section-4.2-2.8.2" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+</dl>
+<p id="section-4.2-3">
+          IMPORTANT: PRISM does not perform TLS interception or decryption.
+          All encrypted traffic analysis is performed on metadata and
+          observable traffic characteristics.<a href="#section-4.2-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="sect-4.3">
+<section id="section-4.3">
+        <h3 id="name-application-categories">
+<a href="#section-4.3" class="section-number selfRef">4.3. </a><a href="#name-application-categories" class="section-name selfRef">Application Categories</a>
+        </h3>
+<span class="break"></span><dl class="dlNewline" id="section-4.3-1">
+          <dt id="section-4.3-1.1">Applications are organized into categories for policy management:</dt>
+          <dd style="margin-left: 0.5em" id="section-4.3-1.2"></dd>
+        <dd class="break"></dd>
+</dl>
+<div id="le-3">
+<figure id="figure-3">
+          <div class="alignLeft art-text artwork" id="section-4.3-2.1">
+<pre>
+       +========================+============================+
+       | Category               | Description                |
+       +========================+============================+
+       | unified-communications | Voice, video, messaging    |
+       |                        | (Teams, Zoom, Webex)       |
+       +------------------------+----------------------------+
+       | business-critical      | Core business applications |
+       |                        | (ERP, CRM, custom apps)    |
+       +------------------------+----------------------------+
+       | cloud-services         | SaaS applications (O365,   |
+       |                        | Salesforce, Workday)       |
+       +------------------------+----------------------------+
+       | infrastructure         | Network services (DNS,     |
+       |                        | NTP, SNMP)                 |
+       +------------------------+----------------------------+
+       | security               | Security tools (AV         |
+       |                        | updates, SIEM)             |
+       +------------------------+----------------------------+
+       | file-transfer          | File sharing (SharePoint,  |
+       |                        | Box, FTP)                  |
+       +------------------------+----------------------------+
+       | web-browsing           | General web traffic        |
+       +------------------------+----------------------------+
+       | streaming-media        | Video/audio streaming      |
+       |                        | (YouTube, Spotify)         |
+       +------------------------+----------------------------+
+       | remote-access          | VPN, RDP, SSH              |
+       +------------------------+----------------------------+
+       | unknown                | Unclassified traffic       |
+       +------------------------+----------------------------+
+</pre>
+</div>
+<figcaption><a href="#figure-3" class="selfRef">Figure 3</a></figcaption></figure>
+</div>
+</section>
+</div>
+</section>
+</div>
+<div id="sect-5">
+<section id="section-5">
+      <h2 id="name-flow-management">
+<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-flow-management" class="section-name selfRef">Flow Management</a>
+      </h2>
+<div id="sect-5.1">
+<section id="section-5.1">
+        <h3 id="name-flow-identification">
+<a href="#section-5.1" class="section-number selfRef">5.1. </a><a href="#name-flow-identification" class="section-name selfRef">Flow Identification</a>
+        </h3>
+<p id="section-5.1-1">
+          A composite key identifies flows:<a href="#section-5.1-1" class="pilcrow">¶</a></p>
+<p id="section-5.1-2">
+          Standard 5-Tuple:<a href="#section-5.1-2" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-5.1-3.1">
+            <p id="section-5.1-3.1.1">IP Protocol (8 bits)<a href="#section-5.1-3.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-5.1-3.2">
+            <p id="section-5.1-3.2.1">Source IP Address (128 bits for IPv6)<a href="#section-5.1-3.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-5.1-3.3">
+            <p id="section-5.1-3.3.1">Destination IP Address (128 bits for IPv6)<a href="#section-5.1-3.3.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-5.1-3.4">
+            <p id="section-5.1-3.4.1">Source Port (16 bits)<a href="#section-5.1-3.4.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-5.1-3.5">
+            <p id="section-5.1-3.5.1">Destination Port (16 bits)<a href="#section-5.1-3.5.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="section-5.1-4">
+          Extended Identifiers (optional):<a href="#section-5.1-4" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-5.1-5.1">
+            <p id="section-5.1-5.1.1">VLAN ID<a href="#section-5.1-5.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-5.1-5.2">
+            <p id="section-5.1-5.2.1">VRF/VPN ID<a href="#section-5.1-5.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-5.1-5.3">
+            <p id="section-5.1-5.3.1">Ingress interface<a href="#section-5.1-5.3.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+</section>
+</div>
+<div id="sect-5.2">
+<section id="section-5.2">
+        <h3 id="name-flow-lifecycle">
+<a href="#section-5.2" class="section-number selfRef">5.2. </a><a href="#name-flow-lifecycle" class="section-name selfRef">Flow Lifecycle</a>
+        </h3>
+<p id="section-5.2-1">
+          Flows progress through the following states:<a href="#section-5.2-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-5.2-2">
+          <dt id="section-5.2-2.1">NEW:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.2-2.2">
+            <p id="section-5.2-2.2.1">
+              First packet observed. Application identification in progress.<a href="#section-5.2-2.2.1" class="pilcrow">¶</a></p>
+<p id="section-5.2-2.2.2">
+              Default traffic class applied.<a href="#section-5.2-2.2.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-5.2-2.3">CLASSIFYING:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.2-2.4">
+            <p id="section-5.2-2.4.1">
+              Multiple packets observed. Application identification<a href="#section-5.2-2.4.1" class="pilcrow">¶</a></p>
+<p id="section-5.2-2.4.2">
+              in progress. May transition to ESTABLISHED once classification
+              confidence exceeds threshold.<a href="#section-5.2-2.4.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-5.2-2.5">ESTABLISHED:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.2-2.6">
+            <p id="section-5.2-2.6.1">
+              Application identified with sufficient confidence.<a href="#section-5.2-2.6.1" class="pilcrow">¶</a></p>
+<p id="section-5.2-2.6.2">
+              Traffic class assigned based on policy. SLA monitoring is active.<a href="#section-5.2-2.6.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-5.2-2.7">CLOSING:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.2-2.8">
+            <p id="section-5.2-2.8.1">
+              Connection termination detected. Preparing to collect<a href="#section-5.2-2.8.1" class="pilcrow">¶</a></p>
+<p id="section-5.2-2.8.2">
+              final statistics.<a href="#section-5.2-2.8.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-5.2-2.9">CLOSED:</dt>
+          <dd style="margin-left: 1.5em" id="section-5.2-2.10">
+            <p id="section-5.2-2.10.1">
+              Flow terminated. Final statistics recorded. Entry<a href="#section-5.2-2.10.1" class="pilcrow">¶</a></p>
+<p id="section-5.2-2.10.2">
+              scheduled for removal after reporting.<a href="#section-5.2-2.10.2" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+</dl>
+</section>
+</div>
+</section>
+</div>
+<div id="sect-6">
+<section id="section-6">
+      <h2 id="name-policy-framework">
+<a href="#section-6" class="section-number selfRef">6. </a><a href="#name-policy-framework" class="section-name selfRef">Policy Framework</a>
+      </h2>
+<div id="sect-6.1">
+<section id="section-6.1">
+        <h3 id="name-policy-model">
+<a href="#section-6.1" class="section-number selfRef">6.1. </a><a href="#name-policy-model" class="section-name selfRef">Policy Model</a>
+        </h3>
+<p id="section-6.1-1">
+          PRISM policies follow a match-action model with the following
+          structure:<a href="#section-6.1-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-6.1-2.1">
+            <p id="section-6.1-2.1.1">Policy ID: Unique identifier<a href="#section-6.1-2.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-6.1-2.2">
+            <p id="section-6.1-2.2.1">Name: Human-readable name<a href="#section-6.1-2.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-6.1-2.3">
+            <p id="section-6.1-2.3.1">Priority: Evaluation order (lower = higher priority)<a href="#section-6.1-2.3.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-6.1-2.4">
+            <p id="section-6.1-2.4.1">Match: Conditions that select applicable traffic<a href="#section-6.1-2.4.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-6.1-2.5">
+            <p id="section-6.1-2.5.1">Action: Operations to perform on matching traffic<a href="#section-6.1-2.5.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-6.1-2.6">
+            <p id="section-6.1-2.6.1">Schedule: Optional time-based activation<a href="#section-6.1-2.6.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+</section>
+</div>
+<div id="sect-6.2">
+<section id="section-6.2">
+        <h3 id="name-match-conditions">
+<a href="#section-6.2" class="section-number selfRef">6.2. </a><a href="#name-match-conditions" class="section-name selfRef">Match Conditions</a>
+        </h3>
+<p id="section-6.2-1">
+          Policies can match on:<a href="#section-6.2-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-6.2-2.1">
+            <p id="section-6.2-2.1.1">Source/destination IP address or prefix<a href="#section-6.2-2.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-6.2-2.2">
+            <p id="section-6.2-2.2.1">Port or port range<a href="#section-6.2-2.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-6.2-2.3">
+            <p id="section-6.2-2.3.1">Specific application ID or category<a href="#section-6.2-2.3.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-6.2-2.4">
+            <p id="section-6.2-2.4.1">Application risk level<a href="#section-6.2-2.4.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-6.2-2.5">
+            <p id="section-6.2-2.5.1">Protocol (TCP, UDP, etc.)<a href="#section-6.2-2.5.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-6.2-2.6">
+            <p id="section-6.2-2.6.1">DSCP value<a href="#section-6.2-2.6.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-6.2-2.7">
+            <p id="section-6.2-2.7.1">Time of day<a href="#section-6.2-2.7.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-6.2-2.8">
+            <p id="section-6.2-2.8.1">Ingress interface or zone<a href="#section-6.2-2.8.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+</section>
+</div>
+<div id="sect-6.3">
+<section id="section-6.3">
+        <h3 id="name-actions">
+<a href="#section-6.3" class="section-number selfRef">6.3. </a><a href="#name-actions" class="section-name selfRef">Actions</a>
+        </h3>
+<p id="section-6.3-1">
+          When a policy matches, the following actions may be applied:<a href="#section-6.3-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-6.3-2">
+          <dt id="section-6.3-2.1">Traffic Class Assignment:</dt>
+          <dd style="margin-left: 1.5em" id="section-6.3-2.2">
+            <p id="section-6.3-2.2.1">
+              Set traffic class (maps to SRv6 color),<a href="#section-6.3-2.2.1" class="pilcrow">¶</a></p>
+<p id="section-6.3-2.2.2">
+              set DSCP value<a href="#section-6.3-2.2.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-6.3-2.3">Path Selection:</dt>
+          <dd style="margin-left: 1.5em" id="section-6.3-2.4">
+            <p id="section-6.3-2.4.1">
+              Prefer specific path characteristics, avoid specific<a href="#section-6.3-2.4.1" class="pilcrow">¶</a></p>
+<p id="section-6.3-2.4.2">
+              paths, pin to a specific path<a href="#section-6.3-2.4.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-6.3-2.5">SLA Assignment:</dt>
+          <dd style="margin-left: 1.5em" id="section-6.3-2.6">
+            <p id="section-6.3-2.6.1">
+              Apply SLA profile, set violation actions<a href="#section-6.3-2.6.1" class="pilcrow">¶</a></p>
+<p id="section-6.3-2.6.2">
+              Bandwidth Management: Rate limit, bandwidth guarantee<a href="#section-6.3-2.6.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-6.3-2.7">Security:</dt>
+          <dd style="margin-left: 1.5em" id="section-6.3-2.8">
+            <p id="section-6.3-2.8.1">
+              Permit, deny, redirect to inspection<a href="#section-6.3-2.8.1" class="pilcrow">¶</a></p>
+<p id="section-6.3-2.8.2"></p>
+</dd>
+        <dd class="break"></dd>
+</dl>
+</section>
+</div>
+<div id="sect-6.4">
+<section id="section-6.4">
+        <h3 id="name-sla-definitions">
+<a href="#section-6.4" class="section-number selfRef">6.4. </a><a href="#name-sla-definitions" class="section-name selfRef">SLA Definitions</a>
+        </h3>
+<span class="break"></span><dl class="dlNewline" id="section-6.4-1">
+          <dt id="section-6.4-1.1">Standard SLA Profiles:</dt>
+          <dd style="margin-left: 0.5em" id="section-6.4-1.2"></dd>
+        <dd class="break"></dd>
+</dl>
+<div id="le-4">
+<figure id="figure-4">
+          <div class="alignLeft art-text artwork" id="section-6.4-2.1">
+<pre>
+  +================+=========+========+======+====================+
+  | Profile        | Latency | Jitter | Loss | Use Case           |
+  +================+=========+========+======+====================+
+  | realtime-voice | 150ms   | 30ms   | 1%   | VoIP               |
+  +----------------+---------+--------+------+--------------------+
+  | realtime-video | 200ms   | 50ms   | 1%   | Video conferencing |
+  +----------------+---------+--------+------+--------------------+
+  | interactive    | 300ms   | 100ms  | 2%   | Virtual desktop    |
+  +----------------+---------+--------+------+--------------------+
+  | transactional  | 500ms   | N/A    | 0.1% | Database, API      |
+  +----------------+---------+--------+------+--------------------+
+  | best-effort    | N/A     | N/A    | N/A  | General browsing   |
+  +----------------+---------+--------+------+--------------------+
+</pre>
+</div>
+<figcaption><a href="#figure-4" class="selfRef">Figure 4</a></figcaption></figure>
+</div>
+</section>
+</div>
+</section>
+</div>
+<div id="sect-7">
+<section id="section-7">
+      <h2 id="name-srv6-integration">
+<a href="#section-7" class="section-number selfRef">7. </a><a href="#name-srv6-integration" class="section-name selfRef">SRv6 Integration</a>
+      </h2>
+<div id="sect-7.1">
+<section id="section-7.1">
+        <h3 id="name-traffic-class-to-srv6-color">
+<a href="#section-7.1" class="section-number selfRef">7.1. </a><a href="#name-traffic-class-to-srv6-color" class="section-name selfRef">Traffic Class to SRv6 Color Mapping</a>
+        </h3>
+<span class="break"></span><dl class="dlNewline" id="section-7.1-1">
+          <dt id="section-7.1-1.1">PRISM assigns traffic classes that map to SRv6 policy colors:</dt>
+          <dd style="margin-left: 0.5em" id="section-7.1-1.2"></dd>
+        <dd class="break"></dd>
+</dl>
+<div id="le-5">
+<figure id="figure-5">
+          <div class="alignLeft art-text artwork" id="section-7.1-2.1">
+<pre>
+    +===============+=======+===========+=======================+
+    | Traffic Class | Color | Flex-Algo | Description           |
+    +===============+=======+===========+=======================+
+    | realtime      | 100   | 128       | Voice, real-time C2   |
+    +---------------+-------+-----------+-----------------------+
+    | video         | 200   | 129       | Video conferencing    |
+    +---------------+-------+-----------+-----------------------+
+    | interactive   | 300   | 128       | VDI, interactive apps |
+    +---------------+-------+-----------+-----------------------+
+    | business      | 400   | default   | Business applications |
+    +---------------+-------+-----------+-----------------------+
+    | best-effort   | 0     | default   | Default treatment     |
+    +---------------+-------+-----------+-----------------------+
+</pre>
+</div>
+<figcaption><a href="#figure-5" class="selfRef">Figure 5</a></figcaption></figure>
+</div>
+</section>
+</div>
+<div id="sect-7.2">
+<section id="section-7.2">
+        <h3 id="name-dynamic-path-selection">
+<a href="#section-7.2" class="section-number selfRef">7.2. </a><a href="#name-dynamic-path-selection" class="section-name selfRef">Dynamic Path Selection</a>
+        </h3>
+<p id="section-7.2-1">
+          PRISM influences path selection through traffic class assignment, not
+          direct path manipulation. The sequence is:<a href="#section-7.2-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-7.2-2">
+          <li id="section-7.2-2.1">
+            <p id="section-7.2-2.1.1">PRISM classifies flow and assigns traffic class<a href="#section-7.2-2.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li id="section-7.2-2.2">
+            <p id="section-7.2-2.2.1">Traffic class maps to SRv6 color<a href="#section-7.2-2.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li id="section-7.2-2.3">
+            <p id="section-7.2-2.3.1">SRv6 color maps to SR policy<a href="#section-7.2-2.3.1" class="pilcrow">¶</a></p>
+</li>
+          <li id="section-7.2-2.4">
+            <p id="section-7.2-2.4.1">SR policy specifies Flex-Algo or explicit path<a href="#section-7.2-2.4.1" class="pilcrow">¶</a></p>
+</li>
+          <li id="section-7.2-2.5">
+            <p id="section-7.2-2.5.1">SRv6 data plane forwards accordingly<a href="#section-7.2-2.5.1" class="pilcrow">¶</a></p>
+</li>
+        </ol>
+<p id="section-7.2-3">
+          This maintains clean separation: PRISM determines the application
+          requirements, SRv6 satisfies them.<a href="#section-7.2-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="sect-8">
+<section id="section-8">
+      <h2 id="name-sla-monitoring-and-enforcem">
+<a href="#section-8" class="section-number selfRef">8. </a><a href="#name-sla-monitoring-and-enforcem" class="section-name selfRef">SLA Monitoring and Enforcement</a>
+      </h2>
+<div id="sect-8.1">
+<section id="section-8.1">
+        <h3 id="name-sla-metrics">
+<a href="#section-8.1" class="section-number selfRef">8.1. </a><a href="#name-sla-metrics" class="section-name selfRef">SLA Metrics</a>
+        </h3>
+<p id="section-8.1-1">
+          PRISM monitors:<a href="#section-8.1-1" class="pilcrow">¶</a></p>
+<p id="section-8.1-2">
+          Latency: End-to-end delay. Measured via TCP timestamps or probes.<a href="#section-8.1-2" class="pilcrow">¶</a></p>
+<p id="section-8.1-3"> Jitter: Variation in packet delay. Calculated per <span>[<a href="#RFC3550" class="cite xref">RFC3550</a>]</span>.<a href="#section-8.1-3" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-8.1-4">
+          <dt id="section-8.1-4.1">Packet Loss:</dt>
+          <dd style="margin-left: 1.5em" id="section-8.1-4.2">
+            <p id="section-8.1-4.2.1">
+              Percentage not delivered. Inferred from TCP<a href="#section-8.1-4.2.1" class="pilcrow">¶</a></p>
+<p id="section-8.1-4.2.2">
+              retransmissions.<a href="#section-8.1-4.2.2" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-8.1-4.3">Throughput:</dt>
+          <dd style="margin-left: 1.5em" id="section-8.1-4.4">
+            <p id="section-8.1-4.4.1">
+              Bytes per second over measurement interval.<a href="#section-8.1-4.4.1" class="pilcrow">¶</a></p>
+<p id="section-8.1-4.4.2"></p>
+</dd>
+        <dd class="break"></dd>
+</dl>
+</section>
+</div>
+<div id="sect-8.2">
+<section id="section-8.2">
+        <h3 id="name-remediation-actions">
+<a href="#section-8.2" class="section-number selfRef">8.2. </a><a href="#name-remediation-actions" class="section-name selfRef">Remediation Actions</a>
+        </h3>
+<p id="section-8.2-1">
+          When SLA violations are detected:<a href="#section-8.2-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-8.2-2">
+          <dt id="section-8.2-2.1">Alert Only:</dt>
+          <dd style="margin-left: 0.5em" id="section-8.2-2.2">
+            <p id="section-8.2-2.2.1">
+              Generate alert, no corrective action.<a href="#section-8.2-2.2.1" class="pilcrow">¶</a></p>
+<p id="section-8.2-2.2.2"></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-8.2-2.3">Reclassify:</dt>
+          <dd style="margin-left: 0.5em" id="section-8.2-2.4">
+            <p id="section-8.2-2.4.1">
+              Move the flow to a different traffic class.<a href="#section-8.2-2.4.1" class="pilcrow">¶</a></p>
+<p id="section-8.2-2.4.2"></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-8.2-2.5">Path Switch:</dt>
+          <dd style="margin-left: 0.5em" id="section-8.2-2.6">
+            <p id="section-8.2-2.6.1">
+              Signal SRv6 to prefer the alternate path.<a href="#section-8.2-2.6.1" class="pilcrow">¶</a></p>
+<p id="section-8.2-2.6.2"></p>
+</dd>
+        <dd class="break"></dd>
+</dl>
+<p id="section-8.2-3">
+          Escalate: Notify the external system to take action.<a href="#section-8.2-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="sect-9">
+<section id="section-9">
+      <h2 id="name-control-protocol">
+<a href="#section-9" class="section-number selfRef">9. </a><a href="#name-control-protocol" class="section-name selfRef">Control Protocol</a>
+      </h2>
+<div id="sect-9.1">
+<section id="section-9.1">
+        <h3 id="name-transport">
+<a href="#section-9.1" class="section-number selfRef">9.1. </a><a href="#name-transport" class="section-name selfRef">Transport</a>
+        </h3>
+<p id="section-9.1-1">
+          PRISM control messages are transported via UDP on port 4796.<a href="#section-9.1-1" class="pilcrow">¶</a></p>
+<p id="section-9.1-2">
+          All control messages are authenticated using HMAC-SHA-384.<a href="#section-9.1-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="sect-9.2">
+<section id="section-9.2">
+        <h3 id="name-message-header">
+<a href="#section-9.2" class="section-number selfRef">9.2. </a><a href="#name-message-header" class="section-name selfRef">Message Header</a>
+        </h3>
+<div class="alignLeft art-text artwork" id="section-9.2-1">
+<pre>
+0                   1                   2                   3
+0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|    Version    |     Type      |            Flags              |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|            Length             |           Reserved            |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                                                               |
++                         Node ID (64 bits)                     +
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                      Sequence Number                          |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                                                               |
++                      Timestamp (64 bits)                      +
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                                                               |
++                                                               +
+|                      HMAC-SHA-384 (384 bits)                  |
++                                                               +
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+Total header size: 72 octets (consistent with CONDUIT)
+</pre><a href="#section-9.2-1" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="sect-9.3">
+<section id="section-9.3">
+        <h3 id="name-message-types">
+<a href="#section-9.3" class="section-number selfRef">9.3. </a><a href="#name-message-types" class="section-name selfRef">Message Types</a>
+        </h3>
+<div id="le-6">
+<figure id="figure-6">
+          <div class="alignLeft art-text artwork" id="section-9.3-1.1">
+<pre>
+ +=======+===============+========================================+
+ | Value | Name          | Description                            |
+ +=======+===============+========================================+
+ | 0x01  | HELLO         | Node discovery and capability exchange |
+ +-------+---------------+----------------------------------------+
+ | 0x02  | HELLO_ACK     | Response to HELLO                      |
+ +-------+---------------+----------------------------------------+
+ | 0x10  | POLICY_PUSH   | Policy distribution from controller    |
+ +-------+---------------+----------------------------------------+
+ | 0x11  | POLICY_ACK    | Policy receipt acknowledgment          |
+ +-------+---------------+----------------------------------------+
+ | 0x20  | FLOW_REPORT   | Flow statistics report                 |
+ +-------+---------------+----------------------------------------+
+ | 0x21  | FLOW_SYNC     | Flow state synchronization (HA)        |
+ +-------+---------------+----------------------------------------+
+ | 0x30  | SLA_ALERT     | SLA violation notification             |
+ +-------+---------------+----------------------------------------+
+ | 0x31  | SLA_CLEAR     | SLA violation cleared                  |
+ +-------+---------------+----------------------------------------+
+ | 0x40  | APP_SIGNATURE | Application signature update           |
+ +-------+---------------+----------------------------------------+
+ | 0x0F  | ERROR         | Error notification                     |
+ +-------+---------------+----------------------------------------+
+</pre>
+</div>
+<figcaption><a href="#figure-6" class="selfRef">Figure 6</a></figcaption></figure>
+</div>
+</section>
+</div>
+</section>
+</div>
+<div id="sect-10">
+<section id="section-10">
+      <h2 id="name-grpc-api">
+<a href="#section-10" class="section-number selfRef">10. </a><a href="#name-grpc-api" class="section-name selfRef">gRPC API</a>
+      </h2>
+<p id="section-10-1">
+        PRISM exposes functionality through five gRPC services:<a href="#section-10-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-10-2">
+        <dt id="section-10-2.1">PolicyService:</dt>
+        <dd style="margin-left: 1.5em" id="section-10-2.2">
+          <p id="section-10-2.2.1">
+            Policy lifecycle management (CRUD for policies, SLA<a href="#section-10-2.2.1" class="pilcrow">¶</a></p>
+<p id="section-10-2.2.2">
+            profiles)<a href="#section-10-2.2.2" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-10-2.3">ApplicationService:</dt>
+        <dd style="margin-left: 1.5em" id="section-10-2.4">
+          <p id="section-10-2.4.1">
+            Application signature management<a href="#section-10-2.4.1" class="pilcrow">¶</a></p>
+<p id="section-10-2.4.2"></p>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-10-2.5">FlowService:</dt>
+        <dd style="margin-left: 1.5em" id="section-10-2.6">
+          <p id="section-10-2.6.1">
+            Flow visibility and real-time streaming<a href="#section-10-2.6.1" class="pilcrow">¶</a></p>
+<p id="section-10-2.6.2"></p>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-10-2.7">AnalyticsService:</dt>
+        <dd style="margin-left: 1.5em" id="section-10-2.8">
+          <p id="section-10-2.8.1">
+            SLA compliance reports and traffic analytics<a href="#section-10-2.8.1" class="pilcrow">¶</a></p>
+<p id="section-10-2.8.2"></p>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-10-2.9">ConfigService:</dt>
+        <dd style="margin-left: 1.5em" id="section-10-2.10">
+          <p id="section-10-2.10.1">
+            Node configuration<a href="#section-10-2.10.1" class="pilcrow">¶</a></p>
+<p id="section-10-2.10.2"></p>
+</dd>
+      <dd class="break"></dd>
+</dl>
+<p id="section-10-3">
+        All gRPC connections MUST use mutual TLS (mTLS) with CNSA 2.0
+        compliant certificates.<a href="#section-10-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="sect-11">
+<section id="section-11">
+      <h2 id="name-cryptographic-requirements">
+<a href="#section-11" class="section-number selfRef">11. </a><a href="#name-cryptographic-requirements" class="section-name selfRef">Cryptographic Requirements</a>
+      </h2>
+<p id="section-11-1">
+        PRISM implementations MUST comply with CNSA 2.0:<a href="#section-11-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-11-2.1">
+          <p id="section-11-2.1.1">AES-256-GCM for symmetric encryption<a href="#section-11-2.1.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="section-11-2.2">
+          <p id="section-11-2.2.1">ECDH P-384 for key exchange<a href="#section-11-2.2.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="section-11-2.3">
+          <p id="section-11-2.3.1">ECDSA P-384 for digital signatures<a href="#section-11-2.3.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="section-11-2.4">
+          <p id="section-11-2.4.1">SHA-384 for hashing<a href="#section-11-2.4.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="section-11-2.5">
+          <p id="section-11-2.5.1">HMAC-SHA-384 for message authentication<a href="#section-11-2.5.1" class="pilcrow">¶</a></p>
+</li>
+      </ul>
+<p id="section-11-3">
+        The gRPC API MUST use TLS 1.3 with the TLS_AES_256_GCM_SHA384 cipher suite.<a href="#section-11-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="sect-12">
+<section id="section-12">
+      <h2 id="name-security-considerations">
+<a href="#section-12" class="section-number selfRef">12. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
+      </h2>
+<div id="sect-12.1">
+<section id="section-12.1">
+        <h3 id="name-privacy-considerations">
+<a href="#section-12.1" class="section-number selfRef">12.1. </a><a href="#name-privacy-considerations" class="section-name selfRef">Privacy Considerations</a>
+        </h3>
+<p id="section-12.1-1">
+          PRISM performs deep packet inspection, which raises privacy concerns.
+          PRISM analyzes metadata of encrypted traffic but does not decrypt
+          contents. Organizations SHOULD define data retention policies.<a href="#section-12.1-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="sect-12.2">
+<section id="section-12.2">
+        <h3 id="name-application-identification-">
+<a href="#section-12.2" class="section-number selfRef">12.2. </a><a href="#name-application-identification-" class="section-name selfRef">Application Identification Risks</a>
+        </h3>
+<p id="section-12.2-1">
+          Sophisticated actors may attempt to evade identification.
+          Implementations SHOULD employ multiple identification methods and
+          provide mechanisms to review classifications.<a href="#section-12.2-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="sect-12.3">
+<section id="section-12.3">
+        <h3 id="name-policy-security">
+<a href="#section-12.3" class="section-number selfRef">12.3. </a><a href="#name-policy-security" class="section-name selfRef">Policy Security</a>
+        </h3>
+<p id="section-12.3-1">
+          Policies MUST be authenticated using HMAC-SHA-384. Policy changes
+          SHOULD require appropriate authorization and be logged for audit.<a href="#section-12.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="sect-13">
+<section id="section-13">
+      <h2 id="name-iana-considerations">
+<a href="#section-13" class="section-number selfRef">13. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
+      </h2>
+<div id="sect-13.1">
+<section id="section-13.1">
+        <h3 id="name-udp-port-allocation">
+<a href="#section-13.1" class="section-number selfRef">13.1. </a><a href="#name-udp-port-allocation" class="section-name selfRef">UDP Port Allocation</a>
+        </h3>
+<p id="section-13.1-1">
+          This document requests the allocation of UDP port 4796 for PRISM control
+          messages.<a href="#section-13.1-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="sect-13.2">
+<section id="section-13.2">
+        <h3 id="name-application-category-regist">
+<a href="#section-13.2" class="section-number selfRef">13.2. </a><a href="#name-application-category-regist" class="section-name selfRef">Application Category Registry</a>
+        </h3>
+<p id="section-13.2-1">
+          This document requests the creation of a "PRISM Application Categories."
+          registry with initial values from 0x01 (unified-communications)
+          through 0xFF (unknown).<a href="#section-13.2-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<section id="section-14">
+      <h2 id="name-references">
+<a href="#section-14" class="section-number selfRef">14. </a><a href="#name-references" class="section-name selfRef">References</a>
+      </h2>
+<section id="section-14.1">
+        <h3 id="name-normative-references">
+<a href="#section-14.1" class="section-number selfRef">14.1. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
+        </h3>
+<dl class="references">
+<dt id="RFC3550">[RFC3550]</dt>
+        <dd>
+<span class="refAuthor">Schulzrinne, H.</span>, <span class="refAuthor">Casner, S.</span>, <span class="refAuthor">Frederick, R.</span>, and <span class="refAuthor">V. Jacobson</span>, <span class="refTitle">"RTP: A Transport Protocol for Real-Time Applications"</span>, <span class="seriesInfo">STD 64</span>, <span class="seriesInfo">RFC 3550</span>, <span class="seriesInfo">DOI 10.17487/RFC3550</span>, <time datetime="2003-07" class="refDate">July 2003</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc3550">https://www.rfc-editor.org/info/rfc3550</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8174">[RFC8174]</dt>
+        <dd>
+<span class="refAuthor">Leiba, B.</span>, <span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8174">https://www.rfc-editor.org/info/rfc8174</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8986">[RFC8986]</dt>
+        <dd>
+<span class="refAuthor">Filsfils, C., Ed.</span>, <span class="refAuthor">Camarillo, P., Ed.</span>, <span class="refAuthor">Leddy, J.</span>, <span class="refAuthor">Voyer, D.</span>, <span class="refAuthor">Matsushima, S.</span>, and <span class="refAuthor">Z. Li</span>, <span class="refTitle">"Segment Routing over IPv6 (SRv6) Network Programming"</span>, <span class="seriesInfo">RFC 8986</span>, <span class="seriesInfo">DOI 10.17487/RFC8986</span>, <time datetime="2021-02" class="refDate">February 2021</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8986">https://www.rfc-editor.org/info/rfc8986</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="I-D.conduit-tunnel-fabric">[I-D.conduit-tunnel-fabric]</dt>
+      <dd>
+<span class="refAuthor">V, J. E. W.</span>, <span class="refTitle">"Underlay for IPsec Transport"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-conduit-tunnel-fabric-00</span>, <time datetime="2026-01-30" class="refDate">30 January 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-conduit-tunnel-fabric-00">https://datatracker.ietf.org/doc/html/draft-conduit-tunnel-fabric-00</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+<section id="section-14.2">
+        <h3 id="name-informative-references">
+<a href="#section-14.2" class="section-number selfRef">14.2. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
+        </h3>
+<dl class="references">
+<dt id="RFC2119">[RFC2119]</dt>
+      <dd>
+<span class="refAuthor">Bradner, S.</span>, <span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2119">https://www.rfc-editor.org/info/rfc2119</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+</section>
+<section id="appendix-A">
+      <h2 id="name-acknowledgements">
+<a href="#name-acknowledgements" class="section-name selfRef">Acknowledgements</a>
+      </h2>
+<p id="appendix-A-1">The authors thank the networking community for discussions on
+        SD-WAN requirements and open standards approaches.<a href="#appendix-A-1" class="pilcrow">¶</a></p>
+</section>
+<div id="authors-addresses">
+<section id="appendix-B">
+      <h2 id="name-authors-address">
+<a href="#name-authors-address" class="section-name selfRef">Author's Address</a>
+      </h2>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">John Edward Willman V</span></div>
+<div dir="auto" class="left"><span class="org">Department of the Air Force</span></div>
+<div dir="auto" class="left"><span class="street-address">1800 Air Force Pentagon</span></div>
+<div dir="auto" class="left">
+<span class="locality">Washington</span>, <span class="region">DC</span> <span class="postal-code">20330</span>
+</div>
+<div dir="auto" class="left"><span class="country-name">United States of America</span></div>
+<div class="tel">
+<span>Phone:</span>
+<a href="tel:+1%20786%20994%203023" class="tel">+1 786 994 3023</a>
+</div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:john.willman.1@us.af.mil" class="email">john.willman.1@us.af.mil</a>
+</div>
+<div class="url">
+<span>URI:</span>
+<a href="https://www.linkedin.com/in/johnewillmanv" class="url">https://www.linkedin.com/in/johnewillmanv</a>
+</div>
+</address>
+</section>
+</div>
+<script>const toc = document.getElementById("toc");
+toc.querySelector("h2").addEventListener("click", e => {
+  toc.classList.toggle("active");
+});
+toc.querySelector("nav").addEventListener("click", e => {
+  toc.classList.remove("active");
+});
+</script>
+</body>
+</html>
