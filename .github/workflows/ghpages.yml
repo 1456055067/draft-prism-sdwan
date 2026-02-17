@@ -67,13 +67,6 @@ jobs:
       with:
         token: ${{ github.token }}
 
-    - name: "Update GitHub Pages"
-      uses: martinthomson/i-d-template@v1
-      if: ${{ github.event_name == 'push' }}
-      with:
-        make: gh-pages
-        token: ${{ github.token }}
-
     - name: "Archive Built Drafts"
       uses: actions/upload-artifact@v4
       with:
@@ -82,13 +75,20 @@ jobs:
           draft-*.html
           draft-*.txt
 
+    - name: "Prepare Pages Site"
+      if: ${{ github.event_name == 'push' }}
+      run: |
+        mkdir _site
+        cp draft-*.html draft-*.txt _site/ 2>/dev/null || true
+        if [ -f _site/draft-prism-sdwan.html ]; then
+          cp _site/draft-prism-sdwan.html _site/index.html
+        fi
+
     - name: "Upload Pages Artifact"
       if: ${{ github.event_name == 'push' }}
       uses: actions/upload-pages-artifact@v3
       with:
-        path: |
-          draft-*.html
-          draft-*.txt
+        path: _site
 
   deploy:
     name: "Deploy to GitHub Pages"
