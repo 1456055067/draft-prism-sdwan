@@ -80,8 +80,9 @@ jobs:
       run: |
         mkdir _site
         cp draft-*.html draft-*.txt _site/ 2>/dev/null || true
-        if [ -f _site/draft-prism-sdwan.html ]; then
-          cp _site/draft-prism-sdwan.html _site/index.html
+        first_html=$(ls _site/draft-*.html 2>/dev/null | head -1)
+        if [ -n "$first_html" ]; then
+          cp "$first_html" _site/index.html
         fi
 
     - name: "Upload Pages Artifact"
