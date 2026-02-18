@@ -8,18 +8,18 @@
 
 <rfc xmlns:xi="http://www.w3.org/2001/XInclude"
   category="std"
-  docName="draft-prism-sdwan-latest"
+  docName="draft-willman-rtgwg-prism-sdwan-latest"
   ipr="trust200902"
   obsoletes=""
   updates=""
-  submissionType="IETF"
+  submissionType="ietf"
   xml:lang="en"
   version="3">
 
   <front>
     <title abbrev="PRISM">PRISM: Protocol for Routing Intelligent Service Mapping</title>
 
-    <seriesInfo name="Internet-Draft" value="draft-prism-sdwan-latest" />
+    <seriesInfo name="Internet-Draft" value="draft-willman-rtgwg-prism-sdwan-latest" />
 
     <author fullname="John Edward Willman V" surname="Willman">
       <organization>Department of the Air Force</organization>
@@ -38,7 +38,7 @@
     </author>
     <date year="2026" month="2" day="03" />
     <area>Operations and Management</area>
-    <workgroup>Internet Engineering Task Force</workgroup>
+    <workgroup>Routing Working Group</workgroup>
 
     <keyword>SD-WAN</keyword>
     <keyword>application identification</keyword>
