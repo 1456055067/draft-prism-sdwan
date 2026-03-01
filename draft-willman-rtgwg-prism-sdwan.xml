@@ -36,6 +36,21 @@
         <uri>https://www.linkedin.com/in/johnewillmanv</uri>
       </address>
     </author>
+    <author fullname="Satoru Kanno" initials="S." surname="Kanno">
+      <organization>GMO Internet Group, Inc.</organization>
+      <address>
+        <postal>
+          <street>Cerulean Tower</street>
+          <street>26-1 Sakuragaokacho</street>
+          <city>Shibuya</city>
+          <region>Tokyo</region>
+          <code>150-8512</code>
+          <country>Japan</country>
+        </postal>
+        <email>kanno@gmo-connect.jp</email>
+        <uri>https://www.linkedin.com/in/satoru-kanno/</uri>
+      </address>
+    </author>
     <date year="2026" month="2" day="03" />
     <area>Operations and Management</area>
     <workgroup>Routing Working Group</workgroup>
@@ -60,7 +75,7 @@
         provides the application intelligence and policy enforcement.</t>
       <t>
         The protocol is fully programmable via gRPC, supports distributed and
-        centralized deployment models, and mandates compliance with
+        centralized deployment models, and mandates a phased transition to
         Commercial National Security Algorithm Suite 2.0 (CNSA 2.0)
         cryptographic requirements.</t>
     </abstract>
