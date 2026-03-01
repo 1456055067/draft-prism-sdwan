@@ -223,7 +223,7 @@
  +--------------------------+--------------------------------------+
  | API Coverage             | 100% functionality via gRPC          |
  +--------------------------+--------------------------------------+
- | Cryptographic Suite      | Full CNSA 2.0 compliance             |
+ | Cryptographic Suite      | CNSA 2.0 readiness (phased)          |
  +--------------------------+--------------------------------------+
 ]]></artwork>
         </figure>
@@ -406,7 +406,7 @@
             </t>
             <t>
               responsible for policy management and distribution, application
-              signature database maintenance, aggregated analytics, and
+              signature database maintenance, aggregated analytics and
               reporting, and SLA monitoring dashboard.
             </t>
           </dd>
@@ -536,11 +536,17 @@
           <dt>TLS Server Name Indication (SNI):</dt>
           <dd>
             <t>
-              The SNI field in the TLS
+              The SNI field in the TLS Client Hello message reveals the
+              intended server hostname, making it the primary method for
+              HTTPS application classification.
             </t>
             <t>
-              The client Hello message reveals the intended server hostname. This is
-              the primary method for HTTPS classification.
+              Note: The effectiveness of SNI-based identification will
+              diminish as Encrypted Client Hello (ECH)
+              <xref target="I-D.ietf-tls-esni"/> is deployed. Implementations
+              SHOULD prioritize heuristic and behavioral analysis methods
+              (<xref target="sect-4.1"/>) to maintain classification
+              accuracy for ECH-protected flows.
             </t>
           </dd>
           <dt>TLS Certificate Analysis:</dt>
@@ -575,9 +581,9 @@
           </dd>
         </dl>
         <t>
-          IMPORTANT: PRISM does not perform TLS interception or decryption.
+          PRISM MUST NOT perform TLS interception or decryption.
           All encrypted traffic analysis is performed on metadata and
-          observable traffic characteristics.</t>
+          observable traffic characteristics only.</t>
       </section>
       <section anchor="sect-4.3" numbered="true" toc="default">
         <name>Application Categories</name>
@@ -929,21 +935,18 @@
             <t>
               Generate alert, no corrective action.
             </t>
-            <t />
           </dd>
           <dt>Reclassify:</dt>
           <dd>
             <t>
               Move the flow to a different traffic class.
             </t>
-            <t />
           </dd>
           <dt>Path Switch:</dt>
           <dd>
             <t>
               Signal SRv6 to prefer the alternate path.
             </t>
-            <t />
           </dd>
         </dl>
         <t>
@@ -957,13 +960,15 @@
         <t>
           PRISM control messages are transported via UDP on port 4796.</t>
         <t>
+          PRISM control messages MUST be transported within a CONDUIT encrypted tunnel fabric to ensure confidentiality. Implementations MUST drop PRISM control messages received on unprotected interfaces.</t>
+        <t>
           All control messages are authenticated using HMAC-SHA-384.</t>
       </section>
       <section anchor="sect-9.2" numbered="true" toc="default">
         <name>Message Header</name>
         <artwork name="" type="" align="left" alt=""><![CDATA[
-0                   1                   2                   3
-0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |    Version    |     Type      |            Flags              |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -981,12 +986,35 @@
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                                                               |
 +                                                               +
-|                      HMAC-SHA-384 (384 bits)                  |
+|                                                               |
++                                                               +
+|                                                               |
++                                                               +
+|                                                               |
++                   HMAC-SHA-384 (384 bits)                     +
+|                                                               |
++                                                               +
+|                                                               |
++                                                               +
+|                                                               |
++                                                               +
+|                                                               |
++                                                               +
+|                                                               |
 +                                                               +
 |                                                               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-Total header size: 72 octets (consistent with CONDUIT)
+Total header size: 76 octets
+  Version:         8 bits  ( 1 octet)
+  Type:            8 bits  ( 1 octet)
+  Flags:          16 bits  ( 2 octets)
+  Length:         16 bits  ( 2 octets)
+  Reserved:       16 bits  ( 2 octets)
+  Node ID:        64 bits  ( 8 octets)
+  Sequence Number: 32 bits ( 4 octets)
+  Timestamp:      64 bits  ( 8 octets)
+  HMAC-SHA-384:  384 bits  (48 octets)
 ]]></artwork>
       </section>
       <section anchor="sect-9.3" numbered="true" toc="default">
@@ -1005,6 +1033,8 @@ Total header size: 72 octets (consistent with CONDUIT)
  +-------+---------------+----------------------------------------+
  | 0x02  | HELLO_ACK     | Response to HELLO                      |
  +-------+---------------+----------------------------------------+
+ | 0x0F  | ERROR         | Error notification                     |
+ +-------+---------------+----------------------------------------+
  | 0x10  | POLICY_PUSH   | Policy distribution from controller    |
  +-------+---------------+----------------------------------------+
  | 0x11  | POLICY_ACK    | Policy receipt acknowledgment          |
@@ -1018,8 +1048,6 @@ Total header size: 72 octets (consistent with CONDUIT)
  | 0x31  | SLA_CLEAR     | SLA violation cleared                  |
  +-------+---------------+----------------------------------------+
  | 0x40  | APP_SIGNATURE | Application signature update           |
- +-------+---------------+----------------------------------------+
- | 0x0F  | ERROR         | Error notification                     |
  +-------+---------------+----------------------------------------+
 ]]></artwork>
         </figure>
@@ -1321,7 +1349,7 @@ Total header size: 72 octets (consistent with CONDUIT)
            <front>
               <title>TLS Encrypted Client Hello</title>
               <author initials="E." surname="Rescorla" fullname="Eric Rescorla">
-                 <organization>Windy Hill Systems, LLC</organization>
+                 <organization>Independent</organization>
               </author>
               <author initials="K." surname="Oku" fullname="Kazuho Oku">
                  <organization>Fastly</organization>
@@ -1332,9 +1360,9 @@ Total header size: 72 octets (consistent with CONDUIT)
               <author initials="C. A." surname="Wood" fullname="Christopher A. Wood">
                  <organization>Cloudflare</organization>
               </author>
-              <date month="March" day="4" year="2024"/>
+              <date month="June" day="14" year="2025"/>
            </front>
-           <seriesInfo name="Internet-Draft" value="draft-ietf-tls-esni-18"/>
+           <seriesInfo name="Internet-Draft" value="draft-ietf-tls-esni-25"/>
         </reference>
         <reference anchor="RFC9370" target="https://www.rfc-editor.org/info/rfc9370">
           <front>
