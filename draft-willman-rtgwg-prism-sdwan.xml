@@ -311,7 +311,7 @@
               A set of patterns or heuristics used to
             </t>
             <t>
-              Identify a specific application from its network traffic.
+              identify a specific application from its network traffic.
             </t>
           </dd>
           <dt>Flow:</dt>
@@ -809,7 +809,6 @@
             <t>
               Permit, deny, redirect to inspection
             </t>
-            <t />
           </dd>
         </dl>
       </section>
@@ -916,7 +915,6 @@
             <t>
               Bytes per second over measurement interval.
             </t>
-            <t />
           </dd>
         </dl>
       </section>
